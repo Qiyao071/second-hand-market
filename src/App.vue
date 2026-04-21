@@ -17,10 +17,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const isLoggedIn = ref(false)
 
 const checkLoginStatus = () => {
@@ -36,6 +37,11 @@ const logout = () => {
 }
 
 onMounted(() => {
+  checkLoginStatus()
+})
+
+// 监听路由变化，检查登录状态
+watch(() => route.path, () => {
   checkLoginStatus()
 })
 </script>

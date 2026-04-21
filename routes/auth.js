@@ -2,8 +2,35 @@ import express from 'express'
 import User from '../models/user.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import multer from 'multer'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 const router = express.Router()
+
+// 获取__dirname
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// 创建上传目录
+import fs from 'fs'
+const uploadDir = path.join(__dirname, '../uploads')
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true })
+}
+
+// 配置multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir)
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+})
+
+const upload = multer({ storage: storage })
 
 // 注册
 router.post('/register', async (req, res) => {
@@ -116,6 +143,37 @@ router.put('/profile', async (req, res) => {
   } catch (err) {
     console.error('更新用户信息失败:', err)
     res.status(500).json({ message: '更新用户信息失败' })
+  }
+})
+
+// 上传头像
+router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]
+    if (!token) {
+      return res.status(401).json({ message: '未授权' })
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ message: '请选择要上传的文件' })
+    }
+    
+    const decoded = jwt.verify(token, 'secret_key')
+    const user = await User.findById(decoded.id)
+    
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' })
+    }
+    
+    // 生成头像URL
+    const avatarUrl = `/uploads/${req.file.filename}`
+    user.avatar = avatarUrl
+    await user.save()
+    
+    res.json({ avatar: avatarUrl, message: '头像上传成功' })
+  } catch (err) {
+    console.error('上传头像失败:', err)
+    res.status(500).json({ message: '上传头像失败' })
   }
 })
 

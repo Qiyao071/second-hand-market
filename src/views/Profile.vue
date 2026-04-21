@@ -16,8 +16,10 @@
         <input type="text" id="name" v-model="form.name" required>
       </div>
       <div class="form-group">
-        <label for="avatar">头像URL</label>
-        <input type="text" id="avatar" v-model="form.avatar">
+        <label for="avatar">头像</label>
+        <input type="file" id="avatar" @change="handleAvatarUpload" accept="image/*">
+        <p class="hint">或者输入头像URL：</p>
+        <input type="text" id="avatarUrl" v-model="form.avatar">
       </div>
       <button type="submit">保存修改</button>
       <p class="error" v-if="error">{{ error }}</p>
@@ -57,6 +59,30 @@ const loadUserInfo = async () => {
     form.value.avatar = response.data.avatar || ''
   } catch (err) {
     console.error('加载用户信息失败:', err)
+  }
+}
+
+const handleAvatarUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  const formData = new FormData()
+  formData.append('avatar', file)
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post('/api/auth/upload-avatar', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    form.value.avatar = response.data.avatar
+    success.value = '头像上传成功！'
+    // 重新加载用户信息
+    loadUserInfo()
+  } catch (err) {
+    error.value = err.response?.data?.message || '头像上传失败，请稍后重试'
   }
 }
 
@@ -173,5 +199,11 @@ button:hover {
 .success {
   color: green;
   margin-top: 1rem;
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0.5rem 0;
 }
 </style>
