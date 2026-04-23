@@ -3,6 +3,7 @@ import Home from './views/Home.vue'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
 import Profile from './views/Profile.vue'
+import Publish from './views/Publish.vue'
 
 const routes = [
   {
@@ -27,6 +28,14 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  {
+    path: '/publish',
+    name: 'Publish',
+    component: Publish,
+    meta: {
+      requiresAuth: true
+    }
   }
 ]
 
@@ -35,7 +44,6 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoggedIn = !!localStorage.getItem('token')
