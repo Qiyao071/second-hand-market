@@ -3,7 +3,7 @@
     <h2>欢迎来到校园二手物品发布平台</h2>
     <p>这是一个专为校园学生设计的二手物品交易平台，您可以在这里发布和购买各种二手物品。</p>
     <div class="features">
-      <div class="feature-card">
+      <div class="feature-card" @click="goToPublish">
         <h3>发布物品</h3>
         <p>轻松发布您的二手物品，上传图片和详细描述</p>
       </div>
@@ -18,6 +18,21 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const goToPublish = () => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    router.push('/publish')
+  } else {
+    router.push('/login')
+  }
+}
+</script>
 
 <style scoped>
 .home {
@@ -49,6 +64,17 @@
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s;
+  cursor: pointer;
+}
+
+.feature-card:first-child {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.feature-card:first-child h3,
+.feature-card:first-child p {
+  color: white;
 }
 
 .feature-card:hover {

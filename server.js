@@ -1,26 +1,30 @@
 import express from 'express'
 import mongoose from 'mongoose'
 import authRoutes from './routes/auth.js'
+import itemRoutes from './routes/item.js'
 import cors from 'cors'
 import multer from 'multer'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
 
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// 获取__dirname
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 创建上传目录
-import fs from 'fs'
 const uploadDir = path.join(__dirname, 'uploads')
+const itemsUploadDir = path.join(__dirname, 'uploads/items')
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true })
 }
 
-// 配置multer
+if (!fs.existsSync(itemsUploadDir)) {
+  fs.mkdirSync(itemsUploadDir, { recursive: true })
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir)
@@ -33,15 +37,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage })
 
-// 中间件
 app.use(cors())
 app.use(express.json())
 app.use('/uploads', express.static(uploadDir))
 
-// 路由
 app.use('/api/auth', authRoutes)
+app.use('/api/items', itemRoutes)
 
-// 数据库连接
 mongoose.connect('mongodb://localhost:27017/campus-market', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -49,7 +51,6 @@ mongoose.connect('mongodb://localhost:27017/campus-market', {
 .then(() => console.log('数据库连接成功'))
 .catch(err => console.error('数据库连接失败:', err))
 
-// 测试路由
 app.get('/', (req, res) => {
   res.json({ message: '校园二手物品发布平台后端服务' })
 })

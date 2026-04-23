@@ -6,6 +6,7 @@
         <router-link to="/">首页</router-link>
         <router-link v-if="!isLoggedIn" to="/login">登录</router-link>
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
+        <router-link v-if="isLoggedIn" to="/publish">发布物品</router-link>
         <router-link v-if="isLoggedIn" to="/profile">个人中心</router-link>
         <button v-if="isLoggedIn" @click="logout">退出登录</button>
       </nav>
@@ -40,7 +41,6 @@ onMounted(() => {
   checkLoginStatus()
 })
 
-// 监听路由变化，检查登录状态
 watch(() => route.path, () => {
   checkLoginStatus()
 })
