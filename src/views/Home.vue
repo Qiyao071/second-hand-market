@@ -7,7 +7,7 @@
         <h3>发布物品</h3>
         <p>轻松发布您的二手物品，上传图片和详细描述</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" @click="goToItems">
         <h3>浏览物品</h3>
         <p>浏览各种二手物品，找到您需要的宝贝</p>
       </div>
@@ -31,6 +31,10 @@ const goToPublish = () => {
   } else {
     router.push('/login')
   }
+}
+
+const goToItems = () => {
+  router.push('/items')
 }
 </script>
 

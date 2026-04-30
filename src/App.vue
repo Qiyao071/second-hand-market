@@ -4,6 +4,7 @@
       <h1>校园二手物品发布平台</h1>
       <nav class="nav">
         <router-link to="/">首页</router-link>
+        <router-link to="/items">浏览物品</router-link>
         <router-link v-if="!isLoggedIn" to="/login">登录</router-link>
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
         <router-link v-if="isLoggedIn" to="/publish">发布物品</router-link>
