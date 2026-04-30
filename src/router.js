@@ -3,6 +3,9 @@ import Home from './views/Home.vue'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
 import Profile from './views/Profile.vue'
+import Publish from './views/Publish.vue'
+import ItemList from './views/ItemList.vue'
+import ItemDetail from './views/ItemDetail.vue'
 
 const routes = [
   {
@@ -27,6 +30,24 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  {
+    path: '/publish',
+    name: 'Publish',
+    component: Publish,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/items',
+    name: 'ItemList',
+    component: ItemList
+  },
+  {
+    path: '/item/:id',
+    name: 'ItemDetail',
+    component: ItemDetail
   }
 ]
 
@@ -35,7 +56,6 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isLoggedIn = !!localStorage.getItem('token')

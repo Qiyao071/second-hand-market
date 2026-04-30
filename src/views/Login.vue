@@ -42,7 +42,7 @@ const handleLogin = async () => {
     localStorage.setItem('user', JSON.stringify(response.data.user))
     success.value = '登录成功！'
     setTimeout(() => {
-      router.push('/profile')
+      router.push('/')
     }, 1000)
   } catch (err) {
     error.value = err.response?.data?.message || '登录失败，请检查邮箱和密码'
