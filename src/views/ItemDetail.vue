@@ -27,19 +27,19 @@
         <p class="price">¥{{ item.price }}</p>
 
         <div class="info-grid">
-          <div class="info-item">
+          <div class="info-row">
             <span class="label">分类：</span>
             <span class="value">{{ item.category }}</span>
           </div>
-          <div class="info-item">
+          <div class="info-row">
             <span class="label">新旧程度：</span>
             <span class="value">{{ item.condition }}</span>
           </div>
-          <div class="info-item">
+          <div class="info-row">
             <span class="label">发布时间：</span>
             <span class="value">{{ formatDate(item.createdAt) }}</span>
           </div>
-          <div class="info-item">
+          <div class="info-row">
             <span class="label">卖家：</span>
             <span class="value">{{ item.seller?.name || '未知' }}</span>
           </div>
@@ -242,27 +242,33 @@ onMounted(() => {
 }
 
 .info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
   margin: 1.5rem 0;
   padding: 1rem;
   background-color: #f9f9f9;
   border-radius: 8px;
 }
 
-.info-item {
+.info-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  white-space: nowrap;
 }
 
-.info-item .label {
+.info-row .label {
   font-weight: bold;
   color: #666;
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
-.info-item .value {
+.info-row .value {
   color: #333;
+  word-break: break-word;
+  white-space: normal;
+  flex: 1;
 }
 
 .description,
