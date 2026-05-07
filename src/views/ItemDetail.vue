@@ -104,7 +104,7 @@ const fetchItemDetail = async () => {
 }
 
 const goBack = () => {
-  router.back()
+  router.push('/items')
 }
 
 const handleEdit = () => {
