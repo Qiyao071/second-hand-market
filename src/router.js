@@ -6,6 +6,7 @@ import Profile from './views/Profile.vue'
 import Publish from './views/Publish.vue'
 import ItemList from './views/ItemList.vue'
 import ItemDetail from './views/ItemDetail.vue'
+import Edit from './views/Edit.vue'
 
 const routes = [
   {
@@ -48,6 +49,14 @@ const routes = [
     path: '/item/:id',
     name: 'ItemDetail',
     component: ItemDetail
+  },
+  {
+    path: '/edit/:id',
+    name: 'Edit',
+    component: Edit,
+    meta: {
+      requiresAuth: true
+    }
   }
 ]
 
