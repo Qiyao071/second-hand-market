@@ -41,13 +41,23 @@
     </div>
 
     <div v-else class="items-grid">
-      <div v-for="item in items" :key="item._id" class="item-card" @click="goToDetail(item._id)">
-        <div class="item-image">
+      <div v-for="item in items" :key="item._id" class="item-card">
+        <div class="item-image" @click="goToDetail(item._id)">
           <img v-if="item.images && item.images.length > 0" :src="item.images[0]" :alt="item.title">
           <div v-else class="no-image">暂无图片</div>
         </div>
         <div class="item-info">
-          <h3>{{ item.title }}</h3>
+          <div class="item-header">
+            <h3 @click="goToDetail(item._id)">{{ item.title }}</h3>
+            <button 
+              v-if="isLoggedIn"
+              class="favorite-btn" 
+              :class="{ favorited: favorites.has(item._id) }"
+              @click.stop="toggleFavorite(item._id)"
+            >
+              <span class="star-icon">{{ favorites.has(item._id) ? '★' : '☆' }}</span>
+            </button>
+          </div>
           <p class="price">¥{{ item.price }}</p>
           <p class="category">{{ item.category }}</p>
           <p class="condition">{{ item.condition }}</p>
@@ -75,12 +85,17 @@ const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
+const favorites = ref(new Set())
 
 const filters = ref({
   category: '',
   sort: 'createdAt',
   order: 'desc'
 })
+
+const isLoggedIn = () => {
+  return localStorage.getItem('token') !== null
+}
 
 const fetchItems = async () => {
   loading.value = true
@@ -100,10 +115,41 @@ const fetchItems = async () => {
     items.value = response.data.items
     total.value = response.data.total
     totalPages.value = response.data.pages
+    
+    if (isLoggedIn()) {
+      await fetchFavorites()
+    }
   } catch (err) {
     console.error('获取物品列表失败:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchFavorites = async () => {
+  try {
+    favorites.value.clear()
+    const response = await axios.get('/api/favorites')
+    response.data.forEach(fav => {
+      favorites.value.add(fav.itemId.toString())
+    })
+  } catch (err) {
+    console.error('获取收藏列表失败:', err)
+  }
+}
+
+const toggleFavorite = async (itemId) => {
+  try {
+    if (favorites.value.has(itemId)) {
+      await axios.delete(`/api/favorites/${itemId}`)
+      favorites.value.delete(itemId)
+    } else {
+      await axios.post(`/api/favorites/${itemId}`)
+      favorites.value.add(itemId)
+    }
+  } catch (err) {
+    console.error('收藏操作失败:', err)
+    alert(err.response?.data?.message || '操作失败')
   }
 }
 
@@ -235,6 +281,12 @@ h2 {
   padding: 1rem;
 }
 
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .item-info h3 {
   margin: 0 0 0.5rem 0;
   font-size: 1.1rem;
@@ -242,6 +294,32 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.item-info h3:hover {
+  color: #4CAF50;
+}
+
+.favorite-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 0;
+  transition: transform 0.2s;
+}
+
+.favorite-btn:hover {
+  transform: scale(1.2);
+}
+
+.star-icon {
+  color: #ddd;
+}
+
+.favorite-btn.favorited .star-icon {
+  color: #FFD700;
 }
 
 .item-info .price {
