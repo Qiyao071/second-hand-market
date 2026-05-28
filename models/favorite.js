@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose'
 
 const favoriteSchema = new mongoose.Schema({
   userId: {
@@ -15,8 +15,8 @@ const favoriteSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+})
 
-favoriteSchema.index({ userId: 1, itemId: 1 }, { unique: true });
+favoriteSchema.index({ userId: 1, itemId: 1 }, { unique: true })
 
-module.exports = mongoose.model('Favorite', favoriteSchema);
+export default mongoose.model('Favorite', favoriteSchema)

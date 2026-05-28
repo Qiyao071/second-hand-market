@@ -7,6 +7,9 @@ import Publish from './views/Publish.vue'
 import ItemList from './views/ItemList.vue'
 import ItemDetail from './views/ItemDetail.vue'
 import Edit from './views/Edit.vue'
+import FavoriteList from './views/FavoriteList.vue'
+import EditProfile from './views/EditProfile.vue'
+import MyItems from './views/MyItems.vue'
 
 const routes = [
   {
@@ -54,6 +57,30 @@ const routes = [
     path: '/edit/:id',
     name: 'Edit',
     component: Edit,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/favorites',
+    name: 'FavoriteList',
+    component: FavoriteList,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/edit-profile',
+    name: 'EditProfile',
+    component: EditProfile,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/my-items',
+    name: 'MyItems',
+    component: MyItems,
     meta: {
       requiresAuth: true
     }

@@ -51,6 +51,14 @@
       </div>
 
       <div class="form-group">
+        <label for="status">物品状态</label>
+        <select id="status" v-model="form.status">
+          <option value="available">在售</option>
+          <option value="sold">已售出</option>
+        </select>
+      </div>
+
+      <div class="form-group">
         <label>现有图片</label>
         <div class="image-preview" v-if="existingImages.length > 0">
           <div v-for="(img, index) in existingImages" :key="'existing-' + index" class="preview-item">
@@ -99,7 +107,8 @@ const form = ref({
   condition: '',
   price: '',
   description: '',
-  contact: ''
+  contact: '',
+  status: 'available'
 })
 
 const existingImages = ref([])
@@ -120,6 +129,7 @@ const fetchItem = async () => {
     form.value.price = item.price
     form.value.description = item.description
     form.value.contact = item.contact || ''
+    form.value.status = item.status || 'available'
     existingImages.value = item.images || []
   } catch (err) {
     console.error('获取物品信息失败:', err)
@@ -180,6 +190,7 @@ const handleSubmit = async () => {
     formData.append('price', form.value.price)
     formData.append('description', form.value.description)
     formData.append('contact', form.value.contact)
+    formData.append('status', form.value.status)
 
     if (removedImages.value.length > 0) {
       formData.append('removedImages', JSON.stringify(removedImages.value))

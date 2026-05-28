@@ -1,7 +1,9 @@
 <template>
   <div class="app">
     <header class="header">
-      <h1>校园二手物品发布平台</h1>
+      <router-link to="/" class="logo">
+        <h1>校园二手物品发布平台</h1>
+      </router-link>
       <nav class="nav">
         <router-link to="/">首页</router-link>
         <router-link to="/items">浏览物品</router-link>
@@ -63,9 +65,18 @@ watch(() => route.path, () => {
   align-items: center;
 }
 
+.logo {
+  color: white;
+  text-decoration: none;
+}
+
 .header h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .nav {

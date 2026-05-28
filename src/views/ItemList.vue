@@ -129,10 +129,19 @@ const fetchItems = async () => {
 const fetchFavorites = async () => {
   try {
     favorites.value.clear()
-    const response = await axios.get('/api/favorites')
-    response.data.forEach(fav => {
-      favorites.value.add(fav.itemId.toString())
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/api/favorites', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     })
+    if (response.data.success && response.data.data) {
+      response.data.data.forEach(fav => {
+        if (fav.itemId) {
+          favorites.value.add(fav.itemId._id.toString())
+        }
+      })
+    }
   } catch (err) {
     console.error('获取收藏列表失败:', err)
   }
@@ -140,12 +149,25 @@ const fetchFavorites = async () => {
 
 const toggleFavorite = async (itemId) => {
   try {
+    const token = localStorage.getItem('token')
+    const headers = {
+      Authorization: `Bearer ${token}`
+    }
+    
     if (favorites.value.has(itemId)) {
-      await axios.delete(`/api/favorites/${itemId}`)
-      favorites.value.delete(itemId)
+      const response = await axios.delete(`/api/favorites/${itemId}`, { headers })
+      if (response.data.success) {
+        favorites.value.delete(itemId)
+      } else {
+        alert(response.data.message || '取消收藏失败')
+      }
     } else {
-      await axios.post(`/api/favorites/${itemId}`)
-      favorites.value.add(itemId)
+      const response = await axios.post(`/api/favorites/${itemId}`, {}, { headers })
+      if (response.data.success) {
+        favorites.value.add(itemId)
+      } else {
+        alert(response.data.message || '收藏失败')
+      }
     }
   } catch (err) {
     console.error('收藏操作失败:', err)

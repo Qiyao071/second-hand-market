@@ -8,43 +8,33 @@
         <p>{{ user.email }}</p>
       </div>
     </div>
-    
-    <h3>修改个人信息</h3>
-    <form @submit.prevent="updateProfile">
-      <div class="form-group">
-        <label for="name">姓名</label>
-        <input type="text" id="name" v-model="form.name" required>
-      </div>
-      <div class="form-group">
-        <label for="avatar">头像</label>
-        <input type="file" id="avatar" @change="handleAvatarUpload" accept="image/*">
-        <p class="hint">或者输入头像URL：</p>
-        <input type="text" id="avatarUrl" v-model="form.avatar">
-      </div>
-      <button type="submit">保存修改</button>
-      <p class="error" v-if="error">{{ error }}</p>
-      <p class="success" v-if="success">{{ success }}</p>
-    </form>
+
+    <div class="actions">
+      <button @click="goToEditProfile" class="action-btn edit-btn">修改个人信息</button>
+      <button @click="goToMyItems" class="action-btn items-btn">我的发布</button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 
+const router = useRouter()
 const user = ref({
   name: '',
   email: '',
   avatar: ''
 })
 
-const form = ref({
-  name: '',
-  avatar: ''
-})
+const goToEditProfile = () => {
+  router.push('/edit-profile')
+}
 
-const error = ref('')
-const success = ref('')
+const goToMyItems = () => {
+  router.push('/my-items')
+}
 
 const loadUserInfo = async () => {
   try {
@@ -55,52 +45,8 @@ const loadUserInfo = async () => {
       }
     })
     user.value = response.data
-    form.value.name = response.data.name
-    form.value.avatar = response.data.avatar || ''
   } catch (err) {
     console.error('加载用户信息失败:', err)
-  }
-}
-
-const handleAvatarUpload = async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
-  
-  const formData = new FormData()
-  formData.append('avatar', file)
-  
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.post('/api/auth/upload-avatar', formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    form.value.avatar = response.data.avatar
-    success.value = '头像上传成功！'
-    // 重新加载用户信息
-    loadUserInfo()
-  } catch (err) {
-    error.value = err.response?.data?.message || '头像上传失败，请稍后重试'
-  }
-}
-
-const updateProfile = async () => {
-  error.value = ''
-  success.value = ''
-  try {
-    const token = localStorage.getItem('token')
-    await axios.put('/api/auth/profile', form.value, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    success.value = '个人信息更新成功！'
-    // 重新加载用户信息
-    loadUserInfo()
-  } catch (err) {
-    error.value = err.response?.data?.message || '更新失败，请稍后重试'
   }
 }
 
@@ -145,6 +91,7 @@ h2 {
 .profile-info h3 {
   margin: 0;
   color: #333;
+  font-size: 1.5rem;
 }
 
 .profile-info p {
@@ -152,58 +99,36 @@ h2 {
   color: #666;
 }
 
-h3 {
-  margin: 2rem 0 1rem 0;
-  color: #333;
+.actions {
+  display: flex;
+  gap: 1rem;
 }
 
-.form-group {
-  margin-bottom: 1rem;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-}
-
-input {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-button {
-  background-color: #4CAF50;
-  color: white;
+.action-btn {
+  flex: 1;
   border: none;
   padding: 0.8rem 1.5rem;
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.3s;
-  margin-top: 1rem;
 }
 
-button:hover {
+.edit-btn {
+  background-color: #2196F3;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #1976D2;
+}
+
+.items-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.items-btn:hover {
   background-color: #45a049;
-}
-
-.error {
-  color: red;
-  margin-top: 1rem;
-}
-
-.success {
-  color: green;
-  margin-top: 1rem;
-}
-
-.hint {
-  font-size: 0.9rem;
-  color: #666;
-  margin: 0.5rem 0;
 }
 </style>
