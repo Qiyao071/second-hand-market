@@ -4,16 +4,16 @@
     <p>这是一个专为校园学生设计的二手物品交易平台，您可以在这里发布和购买各种二手物品。</p>
     <div class="features">
       <div class="feature-card" @click="goToPublish">
-        <h3>发布物品</h3>
+        <h3>物品发布</h3>
         <p>轻松发布您的二手物品，上传图片和详细描述</p>
       </div>
       <div class="feature-card" @click="goToItems">
         <h3>浏览物品</h3>
         <p>浏览各种二手物品，找到您需要的宝贝</p>
       </div>
-      <div class="feature-card">
-        <h3>安全交易</h3>
-        <p>校园内交易，安全可靠</p>
+      <div class="feature-card" @click="goToFavorites">
+        <h3>物品收藏</h3>
+        <p>收藏您感兴趣的物品，方便后续查看</p>
       </div>
     </div>
   </div>
@@ -35,6 +35,15 @@ const goToPublish = () => {
 
 const goToItems = () => {
   router.push('/items')
+}
+
+const goToFavorites = () => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    router.push('/favorites')
+  } else {
+    router.push('/login')
+  }
 }
 </script>
 
@@ -71,18 +80,14 @@ const goToItems = () => {
   cursor: pointer;
 }
 
-.feature-card:first-child {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.feature-card:first-child h3,
-.feature-card:first-child p {
-  color: white;
-}
-
 .feature-card:hover {
   transform: translateY(-5px);
+  background-color: #4CAF50;
+}
+
+.feature-card:hover h3,
+.feature-card:hover p {
+  color: white;
 }
 
 .feature-card h3 {
