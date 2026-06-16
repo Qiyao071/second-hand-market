@@ -48,31 +48,7 @@ const handleRegister = async () => {
   error.value = ''
   success.value = ''
   
-  // 验证用户名
-  if (!form.value.name || form.value.name.length < 2) {
-    error.value = '用户名至少需要2个字符'
-    return
-  }
-  if (form.value.name.length > 20) {
-    error.value = '用户名不能超过20个字符'
-    return
-  }
-  if (!/^[\u4e00-\u9fa5a-zA-Z0-9_]{2,20}$/.test(form.value.name)) {
-    error.value = '用户名只能包含中文、英文、数字和下划线'
-    return
-  }
-  
   // 验证密码
-  if (!form.value.password || form.value.password.length < 6) {
-    error.value = '密码至少需要6个字符'
-    return
-  }
-  if (form.value.password.length > 30) {
-    error.value = '密码不能超过30个字符'
-    return
-  }
-  
-  // 验证确认密码
   if (form.value.password !== form.value.confirmPassword) {
     error.value = '两次输入的密码不一致'
     return

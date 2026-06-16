@@ -38,27 +38,37 @@ router.post('/register', async (req, res) => {
     const { name, email, password } = req.body
     
     // 验证用户名
-    if (!name || name.length < 2) {
-      return res.status(400).json({ message: '用户名至少需要2个字符' })
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: '请输入用户名' })
     }
-    if (name.length > 20) {
-      return res.status(400).json({ message: '用户名不能超过20个字符' })
+    if (name.length < 2) {
+      return res.status(400).json({ message: '用户名长度不能少于2个字符' })
     }
-    if (!/^[\u4e00-\u9fa5a-zA-Z0-9_]{2,20}$/.test(name)) {
-      return res.status(400).json({ message: '用户名只能包含中文、英文、数字和下划线' })
+    if (name.length > 50) {
+      return res.status(400).json({ message: '用户名长度不能超过50个字符' })
     }
     
-    // 验证邮箱
-    if (!email || email.length > 100) {
-      return res.status(400).json({ message: '邮箱地址格式不正确' })
+    // 验证邮箱格式
+    if (!email || email.trim() === '') {
+      return res.status(400).json({ message: '请输入邮箱地址' })
+    }
+    const emailRegex = /^\S+@\S+\.\S+/
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: '请输入有效的邮箱地址' })
+    }
+    if (email.length > 255) {
+      return res.status(400).json({ message: '邮箱地址长度不能超过255个字符' })
     }
     
     // 验证密码
-    if (!password || password.length < 6) {
-      return res.status(400).json({ message: '密码至少需要6个字符' })
+    if (!password) {
+      return res.status(400).json({ message: '请输入密码' })
     }
-    if (password.length > 30) {
-      return res.status(400).json({ message: '密码不能超过30个字符' })
+    if (password.length < 6) {
+      return res.status(400).json({ message: '密码长度不能少于6个字符' })
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ message: '密码长度不能超过128个字符' })
     }
     
     // 检查邮箱是否已存在
@@ -73,8 +83,8 @@ router.post('/register', async (req, res) => {
     
     // 创建新用户
     const user = new User({
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim(),
       password: hashedPassword
     })
     
