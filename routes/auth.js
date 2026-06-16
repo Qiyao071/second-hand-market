@@ -37,6 +37,30 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body
     
+    // 验证用户名
+    if (!name || name.length < 2) {
+      return res.status(400).json({ message: '用户名至少需要2个字符' })
+    }
+    if (name.length > 20) {
+      return res.status(400).json({ message: '用户名不能超过20个字符' })
+    }
+    if (!/^[\u4e00-\u9fa5a-zA-Z0-9_]{2,20}$/.test(name)) {
+      return res.status(400).json({ message: '用户名只能包含中文、英文、数字和下划线' })
+    }
+    
+    // 验证邮箱
+    if (!email || email.length > 100) {
+      return res.status(400).json({ message: '邮箱地址格式不正确' })
+    }
+    
+    // 验证密码
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: '密码至少需要6个字符' })
+    }
+    if (password.length > 30) {
+      return res.status(400).json({ message: '密码不能超过30个字符' })
+    }
+    
     // 检查邮箱是否已存在
     const existingUser = await User.findOne({ email })
     if (existingUser) {
