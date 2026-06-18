@@ -66,11 +66,14 @@ router.post('/', upload.array('images', 9), async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 10, category, sort = 'createdAt', order = 'desc' } = req.query
+    const { page = 1, limit = 10, category, sort = 'createdAt', order = 'desc', status } = req.query
 
     const query = {}
     if (category && category !== '全部') {
       query.category = category
+    }
+    if (status) {
+      query.status = status
     }
 
     if (sort === 'favoriteCount') {

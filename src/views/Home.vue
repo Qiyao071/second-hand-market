@@ -120,7 +120,10 @@ const fetchItems = async () => {
   try {
     const response = await axios.get('/api/items', {
       params: {
-        limit: 6
+        limit: 4,
+        sort: 'favoriteCount',
+        order: 'desc',
+        status: 'available'
       }
     })
     if (response.data && response.data.items) {
