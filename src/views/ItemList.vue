@@ -22,6 +22,7 @@
         <select v-model="filters.sort" @change="handleFilterChange">
           <option value="createdAt">按发布时间</option>
           <option value="price">按价格</option>
+          <option value="favoriteCount">按收藏数</option>
         </select>
       </div>
 
@@ -49,14 +50,17 @@
         <div class="item-info">
           <div class="item-header">
             <h3 @click="goToDetail(item._id)">{{ item.title }}</h3>
-            <button 
-              v-if="isLoggedIn"
-              class="favorite-btn" 
-              :class="{ favorited: favorites.has(item._id) }"
-              @click.stop="toggleFavorite(item._id)"
-            >
-              <span class="star-icon">{{ favorites.has(item._id) ? '★' : '☆' }}</span>
-            </button>
+            <div class="favorite-section">
+              <button 
+                v-if="isLoggedIn"
+                class="favorite-btn" 
+                :class="{ favorited: favorites.has(item._id) }"
+                @click.stop="toggleFavorite(item._id)"
+              >
+                <span class="star-icon">{{ favorites.has(item._id) ? '★' : '☆' }}</span>
+              </button>
+              <span class="favorite-count">{{ item.favoriteCount || 0 }}</span>
+            </div>
           </div>
           <p class="price">¥{{ item.price }}</p>
           <p class="category">{{ item.category }}</p>
@@ -323,11 +327,17 @@ h2 {
   color: #4CAF50;
 }
 
+.favorite-section {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .favorite-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   padding: 0;
   transition: transform 0.2s;
 }
@@ -342,6 +352,13 @@ h2 {
 
 .favorite-btn.favorited .star-icon {
   color: #FFD700;
+}
+
+.favorite-count {
+  font-size: 0.85rem;
+  color: #999;
+  min-width: 1.5rem;
+  text-align: center;
 }
 
 .item-info .price {

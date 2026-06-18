@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import authRoutes from './routes/auth.js'
 import itemRoutes from './routes/item.js'
 import favoriteRoutes from './routes/favorite.js'
+import statsRoutes from './routes/stats.js'
 import cors from 'cors'
 import multer from 'multer'
 import path from 'path'
@@ -45,6 +46,7 @@ app.use('/uploads', express.static(uploadDir))
 app.use('/api/auth', authRoutes)
 app.use('/api/items', itemRoutes)
 app.use('/api/favorites', favoriteRoutes)
+app.use('/api/stats', statsRoutes)
 
 mongoose.connect('mongodb://localhost:27017/campus-market', {
   useNewUrlParser: true,
