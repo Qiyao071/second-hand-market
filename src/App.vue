@@ -9,7 +9,7 @@
         <router-link to="/items">浏览物品</router-link>
         <router-link v-if="!isLoggedIn" to="/login">登录</router-link>
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
-        <router-link v-if="isLoggedIn" to="/publish">发布物品</router-link>
+        <router-link v-if="isLoggedIn" to="/my-items">我的发布</router-link>
         <router-link v-if="isLoggedIn" to="/favorites">我的收藏</router-link>
         <router-link v-if="isLoggedIn" to="/profile">个人中心</router-link>
         <button v-if="isLoggedIn" @click="logout">退出登录</button>

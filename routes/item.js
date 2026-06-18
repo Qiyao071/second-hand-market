@@ -1,5 +1,6 @@
 import express from 'express'
 import Item from '../models/item.js'
+import Favorite from '../models/favorite.js'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import path from 'path'
@@ -72,20 +73,71 @@ router.get('/', async (req, res) => {
       query.category = category
     }
 
-    const items = await Item.find(query)
-      .populate('seller', 'name avatar')
-      .sort({ [sort]: order === 'desc' ? -1 : 1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
+    if (sort === 'favoriteCount') {
+      const itemsWithFavorites = await Item.aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: 'favorites',
+            localField: '_id',
+            foreignField: 'itemId',
+            as: 'favorites'
+          }
+        },
+        {
+          $addFields: {
+            favoriteCount: { $size: '$favorites' },
+            seller: { $toObjectId: '$seller' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'seller',
+            foreignField: '_id',
+            as: 'seller'
+          }
+        },
+        { $unwind: '$seller' },
+        { $sort: { favoriteCount: order === 'desc' ? -1 : 1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: Number(limit) }
+      ])
 
-    const total = await Item.countDocuments(query)
+      const total = await Item.countDocuments(query)
 
-    res.json({
-      items,
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / limit)
-    })
+      res.json({
+        items: itemsWithFavorites,
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / limit)
+      })
+    } else {
+      const items = await Item.find(query)
+        .populate('seller', 'name avatar')
+        .sort({ [sort]: order === 'desc' ? -1 : 1 })
+        .skip((page - 1) * limit)
+        .limit(Number(limit))
+
+      const itemsWithFavoriteCount = await Promise.all(
+        items.map(async item => {
+          const favoriteCount = await Favorite.countDocuments({ itemId: item._id })
+          return {
+            ...item.toObject(),
+            favoriteCount
+          }
+        })
+      )
+
+      const total = await Item.countDocuments(query)
+
+      res.json({
+        items: itemsWithFavoriteCount,
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / limit)
+      })
+    }
   } catch (err) {
     console.error('获取物品列表失败:', err)
     res.status(500).json({ message: '获取物品列表失败' })

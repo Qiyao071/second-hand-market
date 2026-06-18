@@ -58,6 +58,9 @@
         <div class="actions">
           <button v-if="isOwner" @click="handleEdit" class="edit-btn">编辑物品</button>
           <button v-if="isOwner" @click="handleDelete" class="delete-btn">删除物品</button>
+          <button v-if="!isOwner" @click="toggleFavorite" :class="['favorite-btn', { active: isFavorited }]" class="favorite-btn">
+            {{ isFavorited ? '★ 已收藏' : '☆ 收藏' }}
+          </button>
         </div>
       </div>
     </div>
@@ -75,6 +78,7 @@ const router = useRouter()
 const route = useRoute()
 const item = ref(null)
 const currentImage = ref('')
+const isFavorited = ref(false)
 
 const isOwner = computed(() => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -128,8 +132,58 @@ const handleDelete = async () => {
   }
 }
 
-onMounted(() => {
-  fetchItemDetail()
+const checkFavorite = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    
+    const response = await axios.get(`/api/favorites/check/${item.value._id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    if (response.data.success) {
+      isFavorited.value = response.data.isFavorited
+    }
+  } catch (err) {
+    console.error('检查收藏状态失败:', err)
+  }
+}
+
+const toggleFavorite = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    alert('请先登录')
+    router.push('/login')
+    return
+  }
+
+  try {
+    if (isFavorited.value) {
+      await axios.delete(`/api/favorites/${item.value._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      isFavorited.value = false
+      alert('已取消收藏')
+    } else {
+      await axios.post(`/api/favorites/${item.value._id}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      isFavorited.value = true
+      alert('收藏成功')
+    }
+  } catch (err) {
+    alert(err.response?.data?.message || '操作失败')
+  }
+}
+
+onMounted(async () => {
+  await fetchItemDetail()
+  await checkFavorite()
 })
 </script>
 
@@ -321,6 +375,32 @@ onMounted(() => {
 
 .delete-btn:hover {
   background-color: #ff7875;
+}
+
+.favorite-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background-color: #f8f9fa;
+  color: #666;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.favorite-btn:hover {
+  border-color: #4CAF50;
+  background-color: #f0fff4;
+  color: #4CAF50;
+}
+
+.favorite-btn.active {
+  border-color: #4CAF50;
+  background-color: #4CAF50;
+  color: white;
 }
 
 .loading {
