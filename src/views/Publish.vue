@@ -51,7 +51,7 @@
       </div>
 
       <div class="form-group">
-        <label>物品图片（最多9张）</label>
+        <label>物品图片 *（至少上传1张，最多9张）</label>
         <div class="image-upload">
           <input type="file" id="images" multiple @change="handleImageUpload" accept="image/*">
           <p class="hint">支持 JPG、PNG 格式，每张图片大小不超过 5MB</p>
@@ -127,6 +127,11 @@ const handleSubmit = async () => {
 
   if (!form.value.title || !form.value.category || !form.value.condition || !form.value.price || !form.value.description) {
     error.value = '请填写所有必填项'
+    return
+  }
+
+  if (images.value.length === 0) {
+    error.value = '请至少上传1张图片'
     return
   }
 

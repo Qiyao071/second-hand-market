@@ -75,6 +75,10 @@
       <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
       <button @click="nextPage" :disabled="currentPage === totalPages">下一页</button>
     </div>
+
+    <div v-if="items.length > 0 && currentPage === totalPages" class="end-tip">
+      <p>— 已加载全部物品 —</p>
+    </div>
   </div>
 </template>
 
@@ -408,5 +412,17 @@ h2 {
 .pagination span {
   color: #666;
   font-size: 1rem;
+}
+
+.end-tip {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+
+.end-tip p {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
 }
 </style>
