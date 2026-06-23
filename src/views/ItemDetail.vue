@@ -68,6 +68,7 @@
           <button v-if="!isOwner" @click="toggleFavorite" :class="['favorite-btn', { active: isFavorited }]" class="favorite-btn">
             {{ isFavorited ? '★ 已收藏' : '☆ 收藏' }}
           </button>
+          <button v-if="!isOwner" @click="handleMessage" class="message-btn">私信卖家</button>
         </div>
       </div>
     </div>
@@ -161,6 +162,27 @@ const checkFavorite = async () => {
   } catch (err) {
     console.error('检查收藏状态失败:', err)
   }
+}
+
+const handleMessage = () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    alert('请先登录')
+    router.push('/login')
+    return
+  }
+  if (!item.value?.seller?._id) {
+    alert('无法获取卖家信息')
+    return
+  }
+  router.push({
+    path: '/messages',
+    query: {
+      userId: item.value.seller._id,
+      itemId: item.value._id,
+      itemTitle: item.value.title
+    }
+  })
 }
 
 const toggleFavorite = async () => {
@@ -445,6 +467,21 @@ onMounted(async () => {
   border-color: #4CAF50;
   background-color: #4CAF50;
   color: white;
+}
+
+.message-btn {
+  padding: 0.8rem 1.5rem;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.message-btn:hover {
+  background-color: #1976D2;
 }
 
 .loading {
