@@ -43,14 +43,10 @@
             <span class="label">卖家：</span>
             <div class="seller-profile" @click="goToSellerProfile(item.seller?._id)">
               <img 
-                v-if="item.seller?.avatar" 
-                :src="item.seller.avatar" 
-                :alt="item.seller.name"
+                :src="item.seller?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.seller?.name || 'user'}`" 
+                :alt="item.seller?.name"
                 class="seller-avatar"
               />
-              <div v-else class="seller-avatar placeholder">
-                {{ item.seller?.name?.charAt(0) || '?' }}
-              </div>
               <span class="seller-name">{{ item.seller?.name || '未知' }}</span>
             </div>
           </div>
@@ -366,16 +362,6 @@ onMounted(async () => {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #ddd;
-}
-
-.seller-avatar.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f0f0f0;
-  color: #666;
-  font-size: 0.9rem;
-  font-weight: bold;
 }
 
 .seller-name {
