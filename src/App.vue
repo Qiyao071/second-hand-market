@@ -11,6 +11,7 @@
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
         <router-link v-if="isLoggedIn" to="/my-items">我的发布</router-link>
         <router-link v-if="isLoggedIn" to="/favorites">我的收藏</router-link>
+        <router-link v-if="isLoggedIn" to="/messages">消息</router-link>
         <router-link v-if="isLoggedIn && isBanned" to="/appeal">申诉</router-link>
         <router-link v-if="isLoggedIn && isAdmin" to="/admin">管理后台</router-link>
         <router-link v-if="isLoggedIn" to="/profile">个人中心</router-link>

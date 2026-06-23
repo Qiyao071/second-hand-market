@@ -6,6 +6,7 @@ import favoriteRoutes from './routes/favorite.js'
 import statsRoutes from './routes/stats.js'
 import adminRoutes from './routes/admin.js'
 import appealRoutes from './routes/appeal.js'
+import messageRoutes from './routes/message.js'
 import cors from 'cors'
 import multer from 'multer'
 import path from 'path'
@@ -51,6 +52,7 @@ app.use('/api/favorites', favoriteRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/appeals', appealRoutes)
+app.use('/api/messages', messageRoutes)
 
 mongoose.connect('mongodb://localhost:27017/campus-market', {
   useNewUrlParser: true,

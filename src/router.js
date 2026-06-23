@@ -15,6 +15,7 @@ import AdminUsers from './views/AdminUsers.vue'
 import AdminItems from './views/AdminItems.vue'
 import AdminAppeals from './views/AdminAppeals.vue'
 import Appeal from './views/Appeal.vue'
+import Messages from './views/Messages.vue'
 
 const routes = [
   {
@@ -94,6 +95,14 @@ const routes = [
     path: '/appeal',
     name: 'Appeal',
     component: Appeal,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/messages',
+    name: 'Messages',
+    component: Messages,
     meta: {
       requiresAuth: true
     }
