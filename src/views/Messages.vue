@@ -59,7 +59,10 @@
           >
             <div class="message-content">
               <span v-if="message.isRevoked" class="revoked-text">[消息已撤回]</span>
-              <span v-else>{{ message.content }}</span>
+              <div v-else>
+                <p v-if="message.content" class="text-content">{{ message.content }}</p>
+                <img v-if="message.image" :src="message.image" alt="图片消息" class="message-image" @click="previewImage(message.image)">
+              </div>
             </div>
             <div class="message-footer">
               <span class="message-time">{{ formatTime(message.createdAt) }}</span>
@@ -91,12 +94,46 @@
 
         <div v-if="selectedConversation && !isSystemConversation" class="chat-input-area">
           <input 
+            ref="imageInput"
+            type="file" 
+            accept="image/*" 
+            multiple
+            @change="handleImageUpload" 
+            style="display: none"
+          >
+          <button @click="$refs.imageInput.click()" class="image-btn" title="发送图片">
+            📷
+          </button>
+          <input 
             v-model="newMessage" 
             @keyup.enter="sendMessage"
             placeholder="输入消息..."
             class="message-input"
           >
           <button @click="sendMessage" class="send-btn">发送</button>
+        </div>
+        
+        <!-- 图片预览 -->
+        <div v-if="previewImageUrls.length > 0" class="image-preview">
+          <div class="preview-header">
+            <span>已选择 {{ previewImageUrls.length }} 张图片</span>
+            <button @click="cancelImagePreview" class="cancel-preview-btn">取消</button>
+          </div>
+          <div class="preview-images">
+            <div 
+              v-for="(imageUrl, index) in previewImageUrls" 
+              :key="index" 
+              class="preview-item"
+            >
+              <img :src="imageUrl" :alt="`图片 ${index + 1}`" @click="previewImage(imageUrl)">
+              <button @click="removePreviewImage(index)" class="remove-image-btn">×</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 图片查看器 -->
+        <div v-if="showImageViewer" class="image-viewer" @click="closeImageViewer">
+          <img :src="viewerImageUrl" alt="查看图片" @click.stop>
         </div>
       </div>
     </div>
@@ -119,6 +156,10 @@ const messagesEnd = ref(null)
 const showQuickMessages = ref(false)
 const itemInfo = ref(null)
 const isSystemConversation = ref(false)
+const previewImageUrls = ref([])
+const showImageViewer = ref(false)
+const viewerImageUrl = ref('')
+const imageInput = ref(null)
 let messagePollingInterval = null
 
 const quickMessageTemplates = [
@@ -253,28 +294,135 @@ const fetchMessages = async (userId) => {
 }
 
 const sendMessage = async () => {
-  if (!newMessage.value.trim() || !selectedConversation.value) return
+  console.log('sendMessage called - newMessage:', newMessage.value, 'previewImageUrls:', previewImageUrls.value)
+  
+  if ((!newMessage.value.trim() && previewImageUrls.value.length === 0) || !selectedConversation.value) {
+    console.log('returning early - no message or no conversation')
+    return
+  }
 
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.post(
-      `/api/messages/send/${selectedConversation.value._id}`,
-      { content: newMessage.value.trim() },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    if (response.data.success) {
-      currentMessages.value.push(response.data.data)
-      newMessage.value = ''
-      showQuickMessages.value = false
-      await nextTick(() => {
-        messagesEnd.value?.scrollIntoView({ behavior: 'smooth' })
-      })
-      fetchConversations()
+    console.log('token exists:', !!token)
+    console.log('selectedConversation:', selectedConversation.value?._id)
+    
+    // 先发送文字消息（如果有）
+    if (newMessage.value.trim()) {
+      console.log('sending text message:', newMessage.value.trim())
+      const textResponse = await axios.post(
+        '/api/messages/send/' + selectedConversation.value._id,
+        { content: newMessage.value.trim(), image: '' },
+        { headers: { Authorization: 'Bearer ' + token } }
+      )
+      if (textResponse.data.success) {
+        currentMessages.value.push(textResponse.data.data)
+      }
     }
+    
+    // 发送图片消息（每张图片一条消息）
+    console.log('sending', previewImageUrls.value.length, 'image messages')
+    for (const imageUrl of previewImageUrls.value) {
+      console.log('sending image:', imageUrl)
+      try {
+        const response = await axios.post(
+          '/api/messages/send/' + selectedConversation.value._id,
+          { content: '', image: imageUrl },
+          { headers: { Authorization: 'Bearer ' + token } }
+        )
+        console.log('image send response:', response.data)
+        if (response.data.success) {
+          currentMessages.value.push(response.data.data)
+        }
+      } catch (imgErr) {
+        console.error('发送图片失败:', imgErr.response?.data || imgErr.message)
+      }
+    }
+    
+    newMessage.value = ''
+    previewImageUrls.value = []
+    showQuickMessages.value = false
+    await nextTick(() => {
+      messagesEnd.value?.scrollIntoView({ behavior: 'smooth' })
+    })
+    fetchConversations()
   } catch (err) {
     console.error('发送消息失败:', err)
     alert(err.response?.data?.message || '发送消息失败')
   }
+}
+
+const handleImageUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+
+  console.log('选择了', files.length, '个文件')
+
+  // 检查是否超过最大数量
+  if (previewImageUrls.value.length + files.length > 9) {
+    alert('最多只能选择9张图片')
+    return
+  }
+
+  // 检查文件
+  for (const file of files) {
+    // 检查文件大小（5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`图片 ${file.name} 大小超过5MB`)
+      return
+    }
+
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      alert(`文件 ${file.name} 不是图片格式`)
+      return
+    }
+  }
+
+  try {
+    const token = localStorage.getItem('token')
+    const formData = new FormData()
+    for (const file of files) {
+      formData.append('images', file)
+    }
+
+    console.log('开始上传图片...')
+    const response = await axios.post('/api/messages/upload-image', formData, {
+      headers: { 
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    console.log('上传图片响应:', response.data)
+    if (response.data.success) {
+      previewImageUrls.value = [...previewImageUrls.value, ...response.data.data.imageUrls]
+      console.log('预览图片URLs:', previewImageUrls.value)
+    }
+  } catch (err) {
+    console.error('上传图片失败:', err.response?.data || err.message)
+    alert(err.response?.data?.message || '上传图片失败')
+  }
+
+  // 清空input，允许重复选择同一文件
+  event.target.value = ''
+}
+
+const cancelImagePreview = () => {
+  previewImageUrls.value = []
+}
+
+const removePreviewImage = (index) => {
+  previewImageUrls.value.splice(index, 1)
+}
+
+const previewImage = (imageUrl) => {
+  viewerImageUrl.value = imageUrl
+  showImageViewer.value = true
+}
+
+const closeImageViewer = () => {
+  showImageViewer.value = false
+  viewerImageUrl.value = ''
 }
 
 const isSentMessage = (message) => {
@@ -614,6 +762,18 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
+.text-content {
+  margin: 0;
+}
+
+.message-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+}
+
 .message-item:not(.sent) .message-content {
   background-color: #f0f0f0;
   color: #333;
@@ -710,6 +870,128 @@ onUnmounted(() => {
   gap: 10px;
   padding: 16px;
   border-top: 1px solid #eee;
+  align-items: center;
+}
+
+.image-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.image-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #ccc;
+}
+
+.image-preview {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  background-color: #f9f9f9;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.preview-header span {
+  font-size: 14px;
+  color: #666;
+}
+
+.cancel-preview-btn {
+  padding: 4px 12px;
+  background-color: #f0f0f0;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.cancel-preview-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.preview-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.preview-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 50%;
+  background-color: #f44336;
+  color: white;
+  border: 2px solid white;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.remove-image-btn:hover {
+  background-color: #d32f2f;
+}
+
+.image-viewer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.image-viewer img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  cursor: default;
 }
 
 .message-input {
