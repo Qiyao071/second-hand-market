@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h2>个人中心</h2>
+    <h2>{{ isOwnProfile ? '个人中心' : '卖家信息' }}</h2>
     <div class="profile-info">
       <img :src="user.avatar || 'https://via.placeholder.com/100'" alt="头像" class="avatar">
       <div>
@@ -10,22 +10,31 @@
     </div>
 
     <div class="actions">
-      <button @click="goToEditProfile" class="action-btn edit-btn">修改个人信息</button>
-      <button @click="goToMyItems" class="action-btn items-btn">我的发布</button>
+      <button v-if="isOwnProfile" @click="goToEditProfile" class="action-btn edit-btn">修改个人信息</button>
+      <button @click="goToMyItems" class="action-btn items-btn">
+        {{ isOwnProfile ? '我的发布' : '查看发布' }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const user = ref({
   name: '',
   email: '',
   avatar: ''
+})
+
+const isOwnProfile = computed(() => {
+  const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const targetUserId = route.params.id || loggedInUser.id
+  return targetUserId === loggedInUser.id
 })
 
 const goToEditProfile = () => {
@@ -33,18 +42,25 @@ const goToEditProfile = () => {
 }
 
 const goToMyItems = () => {
-  router.push('/my-items')
+  const userId = route.params.id || JSON.parse(localStorage.getItem('user') || '{}').id
+  router.push(`/my-items/${userId}`)
 }
 
 const loadUserInfo = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/auth/profile', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    user.value = response.data
+    const targetUserId = route.params.id
+    if (targetUserId) {
+      const response = await axios.get(`/api/auth/users/${targetUserId}`)
+      user.value = response.data
+    } else {
+      const token = localStorage.getItem('token')
+      const response = await axios.get('/api/auth/profile', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      user.value = response.data
+    }
   } catch (err) {
     console.error('加载用户信息失败:', err)
   }

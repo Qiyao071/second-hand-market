@@ -28,11 +28,11 @@ const routes = [
     component: Register
   },
   {
-    path: '/profile',
+    path: '/profile/:id?',
     name: 'Profile',
     component: Profile,
     meta: {
-      requiresAuth: true
+      requiresAuth: false
     }
   },
   {
@@ -78,11 +78,11 @@ const routes = [
     }
   },
   {
-    path: '/my-items',
+    path: '/my-items/:id?',
     name: 'MyItems',
     component: MyItems,
     meta: {
-      requiresAuth: true
+      requiresAuth: false
     }
   }
 ]
