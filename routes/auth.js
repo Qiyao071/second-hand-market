@@ -184,6 +184,61 @@ router.put('/profile', async (req, res) => {
   }
 })
 
+// 修改密码
+router.put('/change-password', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]
+    if (!token) {
+      return res.status(401).json({ message: '未授权' })
+    }
+    
+    const decoded = jwt.verify(token, 'secret_key')
+    const user = await User.findById(decoded.id)
+    
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' })
+    }
+    
+    const { currentPassword, newPassword, confirmPassword } = req.body
+    
+    // 验证当前密码
+    const isMatch = await bcrypt.compare(currentPassword, user.password)
+    if (!isMatch) {
+      return res.status(400).json({ message: '当前密码不正确' })
+    }
+    
+    // 验证新密码
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: '新密码长度不能少于6个字符' })
+    }
+    
+    if (newPassword.length > 128) {
+      return res.status(400).json({ message: '新密码长度不能超过128个字符' })
+    }
+    
+    // 验证新密码不能与旧密码相同
+    const isSameAsOld = await bcrypt.compare(newPassword, user.password)
+    if (isSameAsOld) {
+      return res.status(400).json({ message: '新密码不可与旧密码一致' })
+    }
+    
+    // 验证确认密码
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: '两次输入的密码不一致' })
+    }
+    
+    // 更新密码
+    const salt = await bcrypt.genSalt(10)
+    user.password = await bcrypt.hash(newPassword, salt)
+    await user.save()
+    
+    res.json({ message: '密码修改成功' })
+  } catch (err) {
+    console.error('修改密码失败:', err)
+    res.status(500).json({ message: '修改密码失败，请稍后重试' })
+  }
+})
+
 // 获取指定用户信息（公开）
 router.get('/users/:id', async (req, res) => {
   try {

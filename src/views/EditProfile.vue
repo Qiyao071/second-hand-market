@@ -28,6 +28,29 @@
       <p class="error" v-if="error">{{ error }}</p>
       <p class="success" v-if="success">{{ success }}</p>
     </form>
+
+    <div class="password-section">
+      <h3>修改密码</h3>
+      <form @submit.prevent="changePassword">
+        <div class="form-group">
+          <label for="currentPassword">当前密码</label>
+          <input type="password" id="currentPassword" v-model="passwordForm.currentPassword" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">新密码</label>
+          <input type="password" id="newPassword" v-model="passwordForm.newPassword" required>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">确认新密码</label>
+          <input type="password" id="confirmPassword" v-model="passwordForm.confirmPassword" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="submit-btn password-btn">修改密码</button>
+        </div>
+        <p class="error" v-if="passwordError">{{ passwordError }}</p>
+        <p class="success" v-if="passwordSuccess">{{ passwordSuccess }}</p>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -48,8 +71,16 @@ const form = ref({
   avatar: ''
 })
 
+const passwordForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
 const error = ref('')
 const success = ref('')
+const passwordError = ref('')
+const passwordSuccess = ref('')
 
 const goBack = () => {
   router.go(-1)
@@ -111,6 +142,28 @@ const updateProfile = async () => {
   } catch (err) {
     error.value = err.response?.data?.message || '更新失败，请稍后重试'
     success.value = ''
+  }
+}
+
+const changePassword = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  try {
+    const token = localStorage.getItem('token')
+    await axios.put('/api/auth/change-password', passwordForm.value, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    passwordSuccess.value = '密码修改成功！'
+    passwordForm.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    }
+  } catch (err) {
+    passwordError.value = err.response?.data?.message || '修改密码失败，请稍后重试'
+    passwordSuccess.value = ''
   }
 }
 
@@ -234,5 +287,26 @@ input {
   text-align: center;
 }
 
+.password-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.password-section h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.password-btn {
+  width: 100%;
+  flex: none;
+  background-color: #f44336;
+}
+
+.password-btn:hover {
+  background-color: #d32f2f;
+}
 
 </style>
