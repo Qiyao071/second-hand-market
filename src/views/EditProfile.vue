@@ -3,7 +3,11 @@
     <h2>修改个人信息</h2>
     
     <div class="profile-preview">
-      <img :src="user.avatar || 'https://via.placeholder.com/100'" alt="头像" class="avatar">
+      <img 
+        :src="user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'user'}`" 
+        alt="头像" 
+        class="avatar"
+      >
       <p>{{ user.name }}</p>
       <p>{{ user.email }}</p>
     </div>
@@ -16,8 +20,6 @@
       <div class="form-group">
         <label for="avatar">头像</label>
         <input type="file" id="avatar" @change="handleAvatarUpload" accept="image/*">
-        <p class="hint">或者输入头像URL：</p>
-        <input type="text" id="avatarUrl" v-model="form.avatar" placeholder="请输入头像URL">
       </div>
       <div class="form-actions">
         <button type="button" @click="goBack" class="back-btn">返回</button>
@@ -232,9 +234,5 @@ input {
   text-align: center;
 }
 
-.hint {
-  font-size: 0.9rem;
-  color: #666;
-  margin: 0.5rem 0;
-}
+
 </style>

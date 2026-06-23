@@ -2,7 +2,11 @@
   <div class="container">
     <h2>{{ isOwnProfile ? '个人中心' : '卖家信息' }}</h2>
     <div class="profile-info">
-      <img :src="user.avatar || 'https://via.placeholder.com/100'" alt="头像" class="avatar">
+      <img 
+        :src="user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'user'}`" 
+        alt="头像" 
+        class="avatar"
+      >
       <div>
         <h3>{{ user.name }}</h3>
         <p>{{ user.email }}</p>
