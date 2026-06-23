@@ -10,6 +10,11 @@ import Edit from './views/Edit.vue'
 import FavoriteList from './views/FavoriteList.vue'
 import EditProfile from './views/EditProfile.vue'
 import MyItems from './views/MyItems.vue'
+import AdminDashboard from './views/AdminDashboard.vue'
+import AdminUsers from './views/AdminUsers.vue'
+import AdminItems from './views/AdminItems.vue'
+import AdminAppeals from './views/AdminAppeals.vue'
+import Appeal from './views/Appeal.vue'
 
 const routes = [
   {
@@ -84,6 +89,50 @@ const routes = [
     meta: {
       requiresAuth: false
     }
+  },
+  {
+    path: '/appeal',
+    name: 'Appeal',
+    component: Appeal,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin',
+    name: 'AdminDashboard',
+    component: AdminDashboard,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: AdminUsers,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/items',
+    name: 'AdminItems',
+    component: AdminItems,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/appeals',
+    name: 'AdminAppeals',
+    component: AdminAppeals,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
   }
 ]
 
@@ -94,10 +143,18 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
   const isLoggedIn = !!localStorage.getItem('token')
 
   if (requiresAuth && !isLoggedIn) {
     next('/login')
+  } else if (requiresAdmin) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (user.role !== 'admin') {
+      next('/')
+    } else {
+      next()
+    }
   } else {
     next()
   }
