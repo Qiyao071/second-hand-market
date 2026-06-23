@@ -82,14 +82,16 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt)
     
     // 创建新用户
+    const isAdmin = email.trim().toLowerCase() === 'root@admin.com'
     const user = new User({
       name: name.trim(),
       email: email.trim(),
-      password: hashedPassword
+      password: hashedPassword,
+      role: isAdmin ? 'admin' : 'user'
     })
     
     await user.save()
-    res.status(201).json({ message: '注册成功' })
+    res.status(201).json({ message: isAdmin ? '管理员账号注册成功' : '注册成功' })
   } catch (err) {
     console.error('注册失败:', err)
     res.status(500).json({ message: '注册失败，请稍后重试' })
@@ -122,7 +124,9 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        avatar: user.avatar
+        avatar: user.avatar,
+        role: user.role,
+        isBanned: user.isBanned
       }
     })
   } catch (err) {

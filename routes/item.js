@@ -1,11 +1,13 @@
 import express from 'express'
 import Item from '../models/item.js'
 import Favorite from '../models/favorite.js'
+import User from '../models/user.js'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import { checkBanStatus } from '../middleware/admin.js'
 
 const router = express.Router()
 
@@ -29,7 +31,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage })
 
-router.post('/', upload.array('images', 9), async (req, res) => {
+router.post('/', upload.array('images', 9), checkBanStatus, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1]
     if (!token) {
@@ -69,11 +71,14 @@ router.get('/', async (req, res) => {
     const { page = 1, limit = 10, category, sort = 'createdAt', order = 'desc', status, search } = req.query
 
     const query = {}
+    // 默认只显示在售物品，已下架和已售出物品不在浏览页面显示
+    if (!status) {
+      query.status = 'available'
+    } else {
+      query.status = status
+    }
     if (category && category !== '全部') {
       query.category = category
-    }
-    if (status) {
-      query.status = status
     }
     if (search) {
       query.title = { $regex: search, $options: 'i' }
@@ -246,10 +251,10 @@ router.get('/user/my-items', async (req, res) => {
   }
 })
 
-// 获取指定用户发布的物品（公开接口）
+// 获取指定用户发布的物品（公开接口）- 只显示在售物品
 router.get('/user/:id', async (req, res) => {
   try {
-    const items = await Item.find({ seller: req.params.id })
+    const items = await Item.find({ seller: req.params.id, status: 'available' })
       .populate('seller', 'name')
       .sort({ createdAt: -1 })
     res.json(items)

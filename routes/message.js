@@ -35,7 +35,8 @@ router.get('/conversations', async (req, res) => {
         $match: {
           $or: [
             { senderId: userId },
-            { receiverId: userId }
+            { receiverId: userId },
+            { receiverId: userId, isSystem: true }
           ]
         }
       },
@@ -46,9 +47,15 @@ router.get('/conversations', async (req, res) => {
         $group: {
           _id: {
             $cond: {
-              if: { $eq: ['$senderId', userId] },
-              then: '$receiverId',
-              else: '$senderId'
+              if: { $eq: ['$isSystem', true] },
+              then: 'system',
+              else: {
+                $cond: {
+                  if: { $eq: ['$senderId', userId] },
+                  then: '$receiverId',
+                  else: '$senderId'
+                }
+              }
             }
           },
           lastMessage: { $first: '$$ROOT' },
@@ -76,14 +83,32 @@ router.get('/conversations', async (req, res) => {
           as: 'user'
         }
       },
-      { $unwind: '$user' },
       {
         $project: {
           _id: 1,
           lastMessage: 1,
           unreadCount: 1,
-          userName: '$user.name',
-          userAvatar: '$user.avatar'
+          userName: { 
+            $cond: {
+              if: { $eq: ['$_id', 'system'] },
+              then: '系统通知',
+              else: { $arrayElemAt: ['$user.name', 0] }
+            }
+          },
+          userAvatar: { 
+            $cond: {
+              if: { $eq: ['$_id', 'system'] },
+              then: null,
+              else: { $arrayElemAt: ['$user.avatar', 0] }
+            }
+          },
+          isSystem: { 
+            $cond: {
+              if: { $eq: ['$_id', 'system'] },
+              then: true,
+              else: { $ifNull: ['$lastMessage.isSystem', false] }
+            }
+          }
         }
       },
       {
@@ -103,24 +128,48 @@ router.get('/conversation/:userId', async (req, res) => {
     const currentUserId = req.user._id
     const targetUserId = req.params.userId
 
-    await Message.updateMany(
-      {
-        senderId: targetUserId,
-        receiverId: currentUserId,
-        isRead: false
-      },
-      { isRead: true }
-    )
+    let messages
+    let query
+    
+    if (targetUserId === 'system') {
+      // 系统消息会话
+      await Message.updateMany(
+        {
+          receiverId: currentUserId,
+          isSystem: true,
+          isRead: false
+        },
+        { isRead: true }
+      )
 
-    const messages = await Message.find({
-      $or: [
-        { senderId: currentUserId, receiverId: targetUserId },
-        { senderId: targetUserId, receiverId: currentUserId }
-      ]
-    })
-    .sort({ createdAt: 1 })
-    .populate('senderId', 'name avatar')
-    .populate('receiverId', 'name avatar')
+      messages = await Message.find({
+        receiverId: currentUserId,
+        isSystem: true
+      })
+      .sort({ createdAt: 1 })
+      .populate('receiverId', 'name avatar')
+    } else {
+      // 普通用户会话
+      await Message.updateMany(
+        {
+          senderId: targetUserId,
+          receiverId: currentUserId,
+          isRead: false,
+          isSystem: false
+        },
+        { isRead: true }
+      )
+
+      messages = await Message.find({
+        $or: [
+          { senderId: currentUserId, receiverId: targetUserId, isSystem: false },
+          { senderId: targetUserId, receiverId: currentUserId, isSystem: false }
+        ]
+      })
+      .sort({ createdAt: 1 })
+      .populate('senderId', 'name avatar')
+      .populate('receiverId', 'name avatar')
+    }
 
     res.json({ success: true, data: messages })
   } catch (err) {
@@ -134,6 +183,10 @@ router.post('/send/:userId', async (req, res) => {
     const senderId = req.user._id
     const receiverId = req.params.userId
     const { content } = req.body
+
+    if (receiverId === 'system') {
+      return res.status(403).json({ success: false, message: '不能向系统发送消息' })
+    }
 
     if (!content || content.trim() === '') {
       return res.status(400).json({ success: false, message: '消息内容不能为空' })

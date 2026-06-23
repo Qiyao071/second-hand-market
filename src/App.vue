@@ -11,9 +11,15 @@
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
         <router-link v-if="isLoggedIn" to="/my-items">我的发布</router-link>
         <router-link v-if="isLoggedIn" to="/favorites">我的收藏</router-link>
-        <router-link v-if="isLoggedIn" to="/messages">消息</router-link>
+        <router-link v-if="isLoggedIn" to="/messages" class="message-link">
+  消息
+  <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+</router-link>
         <router-link v-if="isLoggedIn && isBanned" to="/appeal">申诉</router-link>
-        <router-link v-if="isLoggedIn && isAdmin" to="/admin">管理后台</router-link>
+        <router-link v-if="isLoggedIn && isAdmin" to="/admin" class="admin-link">
+  管理后台
+  <span v-if="pendingAppeals > 0" class="unread-badge">{{ pendingAppeals > 99 ? '99+' : pendingAppeals }}</span>
+</router-link>
         <router-link v-if="isLoggedIn" to="/profile">个人中心</router-link>
         <button v-if="isLoggedIn" @click="logout">退出登录</button>
       </nav>
@@ -25,14 +31,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
 const isLoggedIn = ref(false)
 const isAdmin = ref(false)
 const isBanned = ref(false)
+const unreadCount = ref(0)
+const pendingAppeals = ref(0)
+let pollingInterval = null
 
 const checkLoginStatus = () => {
   const token = localStorage.getItem('token')
@@ -42,9 +52,62 @@ const checkLoginStatus = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     isAdmin.value = user.role === 'admin'
     isBanned.value = user.isBanned
+    fetchUnreadCount()
+    if (isAdmin.value) {
+      fetchPendingAppeals()
+    }
+    startPolling()
   } else {
     isAdmin.value = false
     isBanned.value = false
+    stopPolling()
+    unreadCount.value = 0
+    pendingAppeals.value = 0
+  }
+}
+
+const fetchUnreadCount = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/api/messages/unread-count', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (response.data.success) {
+      unreadCount.value = response.data.data.count
+    }
+  } catch (err) {
+    console.error('获取未读消息数失败:', err)
+  }
+}
+
+const fetchPendingAppeals = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/api/admin/appeals/pending-count', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (response.data.success) {
+      pendingAppeals.value = response.data.data.count
+    }
+  } catch (err) {
+    console.error('获取待处理申诉数量失败:', err)
+  }
+}
+
+const startPolling = () => {
+  stopPolling()
+  pollingInterval = setInterval(() => {
+    fetchUnreadCount()
+    if (isAdmin.value) {
+      fetchPendingAppeals()
+    }
+  }, 5000)
+}
+
+const stopPolling = () => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval)
+    pollingInterval = null
   }
 }
 
@@ -63,6 +126,10 @@ onMounted(() => {
 
 watch(() => route.path, () => {
   checkLoginStatus()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 </script>
 
@@ -125,6 +192,24 @@ watch(() => route.path, () => {
 
 .nav button:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.message-link,
+.admin-link {
+  position: relative;
+}
+
+.unread-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background-color: #f44336;
+  color: white;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
 }
 
 .main {
