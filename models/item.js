@@ -38,7 +38,11 @@ const itemSchema = new mongoose.Schema({
   status: {
     type: String,
     default: 'available',
-    enum: ['available', 'reserved', 'sold']
+    enum: ['available', 'reserved', 'sold', 'removed']
+  },
+  removeReason: {
+    type: String,
+    default: ''
   },
   createdAt: {
     type: Date,

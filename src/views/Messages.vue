@@ -5,20 +5,20 @@
         <h3>消息列表</h3>
         <div class="conversation-items">
           <div 
-            v-for="conversation in conversations" 
-            :key="conversation._id"
-            @click="selectConversation(conversation)"
-            :class="['conversation-item', { active: selectedConversation?._id === conversation._id }]"
+          v-for="conversation in conversations" 
+          :key="conversation._id"
+          @click="selectConversation(conversation)"
+          :class="['conversation-item', { active: selectedConversation?._id === conversation._id, 'system': conversation.isSystem }]"
+        >
+          <img 
+            :src="conversation.isSystem ? 'https://api.dicebear.com/7.x/bottts/svg?seed=system' : (conversation.userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + conversation._id)" 
+            :alt="conversation.userName"
+            class="avatar"
           >
-            <img 
-              :src="conversation.userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + conversation._id" 
-              :alt="conversation.userName"
-              class="avatar"
-            >
-            <div class="conversation-info">
-              <span class="user-name">{{ conversation.userName }}</span>
-              <span class="last-message">{{ conversation.lastMessage.content }}</span>
-            </div>
+          <div class="conversation-info">
+            <span class="user-name">{{ conversation.isSystem ? '系统通知' : conversation.userName }}</span>
+            <span class="last-message">{{ conversation.lastMessage.content }}</span>
+          </div>
             <div class="conversation-meta">
               <span class="time">{{ formatTime(conversation.lastMessage.createdAt) }}</span>
               <span v-if="conversation.unreadCount > 0" class="unread-count">{{ conversation.unreadCount }}</span>
@@ -40,7 +40,7 @@
       <div class="chat-area">
         <div v-if="selectedConversation" class="chat-header">
           <img 
-            :src="selectedConversation.userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + selectedConversation._id" 
+            :src="selectedConversation.isSystem ? 'https://api.dicebear.com/7.x/bottts/svg?seed=system' : (selectedConversation.userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + selectedConversation._id)" 
             :alt="selectedConversation.userName"
             class="avatar"
           >
@@ -89,7 +89,7 @@
           </div>
         </div>
 
-        <div v-if="selectedConversation" class="chat-input-area">
+        <div v-if="selectedConversation && !isSystemConversation" class="chat-input-area">
           <input 
             v-model="newMessage" 
             @keyup.enter="sendMessage"
@@ -118,6 +118,7 @@ const newMessage = ref('')
 const messagesEnd = ref(null)
 const showQuickMessages = ref(false)
 const itemInfo = ref(null)
+const isSystemConversation = ref(false)
 let messagePollingInterval = null
 
 const quickMessageTemplates = [
@@ -191,10 +192,15 @@ const autoSelectFromRoute = async () => {
 
 const selectConversation = async (conversation) => {
   selectedConversation.value = conversation
+  
+  // 检测是否是系统消息会话（必须在任何异步操作之前设置）
+  isSystemConversation.value = conversation.isSystem || false
+  
   await fetchMessages(conversation._id)
   await fetchConversations()
   showQuickMessages.value = false
   itemInfo.value = null
+  
   startMessagePolling()
 }
 
@@ -272,10 +278,16 @@ const sendMessage = async () => {
 }
 
 const isSentMessage = (message) => {
+  // 系统消息显示为接收方消息（左侧）
+  if (message.isSystem) return false
+  
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const userId = user._id || user.id
   
   if (!userId) return false
+  
+  // 处理 senderId 为 null 的情况（系统消息）
+  if (!message.senderId) return false
   
   const senderId = message.senderId._id || message.senderId
   
@@ -429,6 +441,18 @@ onUnmounted(() => {
 
 .conversation-item.active {
   background-color: #e8f5e9;
+}
+
+.conversation-item.system {
+  background-color: #fff3e0;
+}
+
+.conversation-item.system:hover {
+  background-color: #ffe0b2;
+}
+
+.conversation-item.system.active {
+  background-color: #ffcc80;
 }
 
 .conversation-item .avatar {

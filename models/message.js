@@ -4,7 +4,7 @@ const messageSchema = new mongoose.Schema({
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null
   },
   receiverId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -21,6 +21,10 @@ const messageSchema = new mongoose.Schema({
     default: false
   },
   isRevoked: {
+    type: Boolean,
+    default: false
+  },
+  isSystem: {
     type: Boolean,
     default: false
   },

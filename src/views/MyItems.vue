@@ -23,13 +23,25 @@
           <h3>{{ item.title }}</h3>
           <p class="price">¥{{ item.price }}</p>
           <p class="category">{{ item.category }}</p>
-          <p class="status" :class="item.status">{{ item.status === 'available' ? '在售' : '已售出' }}</p>
+          <p class="status" :class="item.status">{{ getStatusText(item.status) }}</p>
         </div>
         <div v-if="isOwnProfile" class="item-actions">
-          <button @click.stop="toggleStatus(item._id, item.status)" class="status-btn" :class="item.status">
+          <button 
+            v-if="item.status !== 'removed'"
+            @click.stop="toggleStatus(item._id, item.status)" 
+            class="status-btn" 
+            :class="item.status"
+          >
             {{ item.status === 'available' ? '设为已售出' : '设为在售' }}
           </button>
-          <button @click.stop="goToEdit(item._id)" class="edit-btn">编辑</button>
+          <button 
+            v-if="item.status === 'removed'"
+            @click.stop="openAppealModal(item)" 
+            class="appeal-btn"
+          >
+            申诉
+          </button>
+          <button @click.stop="goToEdit(item._id)" class="edit-btn" :class="{ disabled: item.status === 'removed' }">编辑</button>
           <button @click.stop="deleteItem(item._id)" class="delete-btn">删除</button>
         </div>
       </div>
@@ -37,6 +49,34 @@
         <div class="publish-content">
           <span class="plus-icon">+</span>
           <span class="publish-text">发布新物品</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 申诉模态框 -->
+    <div v-if="showAppealModal" class="modal-overlay" @click="closeAppealModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>申诉 - {{ appealItem?.title }}</h3>
+          <button @click="closeAppealModal" class="close-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="appeal-item-info">物品名称：{{ appealItem?.title }}</p>
+          <p class="appeal-item-info">下架原因：{{ appealItem?.removeReason || '未说明' }}</p>
+          <div class="appeal-form">
+            <label for="appeal-reason">申诉理由：</label>
+            <textarea 
+              id="appeal-reason"
+              v-model="appealReason" 
+              rows="4" 
+              placeholder="请输入您的申诉理由..."
+              class="appeal-textarea"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeAppealModal" class="cancel-btn">取消</button>
+          <button @click="submitAppeal" class="submit-btn">提交申诉</button>
         </div>
       </div>
     </div>
@@ -53,6 +93,11 @@ const route = useRoute()
 const items = ref([])
 const loading = ref(true)
 const sellerName = ref('')
+
+// 申诉相关状态
+const showAppealModal = ref(false)
+const appealItem = ref(null)
+const appealReason = ref('')
 
 const isOwnProfile = computed(() => {
   const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}')
@@ -103,7 +148,22 @@ const goToPublish = () => {
   router.push('/publish')
 }
 
+const getStatusText = (status) => {
+  const statusMap = {
+    available: '在售',
+    sold: '已售出',
+    removed: '已下架',
+    reserved: '已预约'
+  }
+  return statusMap[status] || status
+}
+
 const toggleStatus = async (id, currentStatus) => {
+  // 已下架的物品不能直接改状态
+  if (currentStatus === 'removed') {
+    alert('已下架的物品需要通过申诉恢复')
+    return
+  }
   const newStatus = currentStatus === 'available' ? 'sold' : 'available'
   const statusText = newStatus === 'available' ? '在售' : '已售出'
   
@@ -142,6 +202,49 @@ const deleteItem = async (id) => {
   } catch (err) {
     console.error('删除物品失败:', err)
     alert('删除失败，请稍后重试')
+  }
+}
+
+// 申诉相关方法
+const openAppealModal = (item) => {
+  appealItem.value = item
+  appealReason.value = ''
+  showAppealModal.value = true
+}
+
+const closeAppealModal = () => {
+  showAppealModal.value = false
+  appealItem.value = null
+  appealReason.value = ''
+}
+
+const submitAppeal = async () => {
+  if (!appealReason.value.trim()) {
+    alert('请输入申诉理由')
+    return
+  }
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post('/api/appeals', {
+      item: appealItem.value._id,
+      type: 'item',
+      reason: appealReason.value.trim()
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    if (response.data.success) {
+      alert('申诉提交成功，等待管理员处理')
+      closeAppealModal()
+    } else {
+      alert(response.data.message || '申诉提交失败')
+    }
+  } catch (err) {
+    console.error('提交申诉失败:', err)
+    alert(err.response?.data?.message || '申诉提交失败，请稍后重试')
   }
 }
 
@@ -328,6 +431,30 @@ h2 {
   color: #721c24;
 }
 
+.status.removed {
+  background-color: #e0e0e0;
+  color: #666;
+}
+
+.status-badge.removed {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background-color: #e0e0e0;
+  color: #666;
+}
+
+.edit-btn.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.edit-btn.disabled:hover {
+  background-color: #ccc;
+}
+
 .item-actions {
   display: flex;
   gap: 0.5rem;
@@ -393,5 +520,140 @@ h2 {
 
 .delete-btn:hover {
   background-color: #d32f2f;
+}
+
+.appeal-btn {
+  flex: 1;
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.appeal-btn:hover {
+  background-color: #7b1fa2;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #999;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 1rem;
+}
+
+.appeal-item-info {
+  margin: 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.appeal-form {
+  margin-top: 1rem;
+}
+
+.appeal-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.appeal-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.appeal-textarea:focus {
+  outline: none;
+  border-color: #9c27b0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.cancel-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.cancel-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.submit-btn {
+  padding: 0.5rem 1rem;
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+  background-color: #7b1fa2;
 }
 </style>
