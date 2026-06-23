@@ -2,36 +2,50 @@
   <div class="item-list">
     <h2>物品列表</h2>
 
-    <div class="filters">
-      <div class="filter-group">
-        <label>物品分类：</label>
-        <select v-model="filters.category" @change="handleFilterChange">
-          <option value="">全部</option>
-          <option value="书籍">书籍</option>
-          <option value="电子产品">电子产品</option>
-          <option value="生活用品">生活用品</option>
-          <option value="服装">服装</option>
-          <option value="家具">家具</option>
-          <option value="运动器材">运动器材</option>
-          <option value="其他">其他</option>
-        </select>
+    <div class="filters-container">
+      <div class="filters">
+        <div class="filter-group">
+          <label>物品分类：</label>
+          <select v-model="filters.category" @change="handleFilterChange">
+            <option value="">全部</option>
+            <option value="书籍">书籍</option>
+            <option value="电子产品">电子产品</option>
+            <option value="生活用品">生活用品</option>
+            <option value="服装">服装</option>
+            <option value="家具">家具</option>
+            <option value="运动器材">运动器材</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>排序方式：</label>
+          <select v-model="filters.sort" @change="handleFilterChange">
+            <option value="createdAt">按发布时间</option>
+            <option value="price">按价格</option>
+            <option value="favoriteCount">按收藏数</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>排序：</label>
+          <select v-model="filters.order" @change="handleFilterChange">
+            <option value="desc">降序</option>
+            <option value="asc">升序</option>
+          </select>
+        </div>
       </div>
 
-      <div class="filter-group">
-        <label>排序方式：</label>
-        <select v-model="filters.sort" @change="handleFilterChange">
-          <option value="createdAt">按发布时间</option>
-          <option value="price">按价格</option>
-          <option value="favoriteCount">按收藏数</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <label>排序：</label>
-        <select v-model="filters.order" @change="handleFilterChange">
-          <option value="desc">降序</option>
-          <option value="asc">升序</option>
-        </select>
+      <div class="search-bar">
+        <input 
+          type="text" 
+          v-model="filters.search" 
+          placeholder="搜索物品名称..."
+          @keyup.enter="handleFilterChange"
+          class="search-input"
+        >
+        <button @click="handleFilterChange" class="search-btn">搜索</button>
+        <button v-if="filters.search" @click="clearSearch" class="clear-btn">清除</button>
       </div>
     </div>
 
@@ -96,6 +110,7 @@ const total = ref(0)
 const favorites = ref(new Set())
 
 const filters = ref({
+  search: '',
   category: '',
   sort: 'createdAt',
   order: 'desc'
@@ -113,6 +128,10 @@ const fetchItems = async () => {
       limit: 12,
       sort: filters.value.sort,
       order: filters.value.order
+    }
+
+    if (filters.value.search) {
+      params.search = filters.value.search
     }
 
     if (filters.value.category) {
@@ -188,6 +207,11 @@ const handleFilterChange = () => {
   fetchItems()
 }
 
+const clearSearch = () => {
+  filters.value.search = ''
+  handleFilterChange()
+}
+
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
@@ -221,15 +245,72 @@ h2 {
   color: #4CAF50;
 }
 
-.filters {
+.filters-container {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   margin-bottom: 2rem;
-  flex-wrap: wrap;
   background-color: white;
   padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.search-btn {
+  padding: 0.8rem 1.5rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.search-btn:hover {
+  background-color: #45a049;
+}
+
+.clear-btn {
+  padding: 0.8rem 1.5rem;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.clear-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .filter-group {
