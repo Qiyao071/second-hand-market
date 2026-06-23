@@ -32,6 +32,37 @@ const messageSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isTradeRequest: {
+    type: Boolean,
+    default: false
+  },
+  tradeItemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Item',
+    default: null
+  },
+  tradeStatus: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending'
+  },
+  tradeFeedback: {
+    type: Boolean,
+    default: false
+  },
+  originalMessageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
+  },
+  deletedForSender: {
+    type: Boolean,
+    default: false
+  },
+  deletedForReceiver: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

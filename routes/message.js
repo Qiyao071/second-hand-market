@@ -1,6 +1,7 @@
 import express from 'express'
 import Message from '../models/message.js'
 import User from '../models/user.js'
+import Item from '../models/item.js'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import path from 'path'
@@ -177,14 +178,16 @@ router.get('/conversation/:userId', async (req, res) => {
         {
           receiverId: currentUserId,
           isSystem: true,
-          isRead: false
+          isRead: false,
+          deletedForReceiver: { $ne: true }
         },
         { isRead: true }
       )
 
       messages = await Message.find({
         receiverId: currentUserId,
-        isSystem: true
+        isSystem: true,
+        deletedForReceiver: { $ne: true }
       })
       .sort({ createdAt: 1 })
       .populate('receiverId', 'name avatar')
@@ -195,15 +198,20 @@ router.get('/conversation/:userId', async (req, res) => {
           senderId: targetUserId,
           receiverId: currentUserId,
           isRead: false,
-          isSystem: false
+          isSystem: false,
+          deletedForReceiver: { $ne: true }
         },
         { isRead: true }
       )
 
       messages = await Message.find({
-        $or: [
-          { senderId: currentUserId, receiverId: targetUserId, isSystem: false },
-          { senderId: targetUserId, receiverId: currentUserId, isSystem: false }
+        $and: [
+          {
+            $or: [
+              { senderId: currentUserId, receiverId: targetUserId, isSystem: false, deletedForSender: { $ne: true } },
+              { senderId: targetUserId, receiverId: currentUserId, isSystem: false, deletedForReceiver: { $ne: true } }
+            ]
+          }
         ]
       })
       .sort({ createdAt: 1 })
@@ -222,9 +230,9 @@ router.post('/send/:userId', async (req, res) => {
   try {
     const senderId = req.user._id
     const receiverId = req.params.userId
-    const { content, image } = req.body
+    const { content, image, isTradeRequest, tradeItemId } = req.body
 
-    console.log('收到消息请求:', { content, image, body: req.body })
+    console.log('收到消息请求:', { content, image, isTradeRequest, tradeItemId, body: req.body })
 
     if (receiverId === 'system') {
       return res.status(403).json({ success: false, message: '不能向系统发送消息' })
@@ -244,7 +252,9 @@ router.post('/send/:userId', async (req, res) => {
       senderId,
       receiverId,
       content: content?.trim() || '',
-      image: image || ''
+      image: image || '',
+      isTradeRequest: isTradeRequest || false,
+      tradeItemId: tradeItemId || null
     })
 
     await message.save()
@@ -325,17 +335,143 @@ router.delete('/conversation/:userId', async (req, res) => {
     const userId = req.user._id
     const targetUserId = req.params.userId
 
-    await Message.deleteMany({
-      $or: [
-        { senderId: userId, receiverId: targetUserId },
-        { senderId: targetUserId, receiverId: userId }
-      ]
-    })
+    // 只标记对当前用户删除，不真正删除消息
+    // 对于当前用户发送的消息，标记为对发送方删除
+    // 对于当前用户接收的消息，标记为对接收方删除
+    await Message.updateMany(
+      { senderId: userId, receiverId: targetUserId },
+      { deletedForSender: true }
+    )
+
+    await Message.updateMany(
+      { senderId: targetUserId, receiverId: userId },
+      { deletedForReceiver: true }
+    )
 
     res.json({ success: true, message: '聊天记录已删除' })
   } catch (err) {
     console.error('删除聊天记录失败:', err)
     res.status(500).json({ success: false, message: '删除聊天记录失败' })
+  }
+})
+
+// 同意交易请求
+router.put('/trade-request/:messageId/accept', async (req, res) => {
+  try {
+    const userId = req.user._id
+    const messageId = req.params.messageId
+
+    const message = await Message.findById(messageId)
+    if (!message) {
+      return res.status(404).json({ success: false, message: '消息不存在' })
+    }
+
+    // 只有消息接收者才能处理交易请求
+    if (String(message.receiverId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: '只能处理发送给您的交易请求' })
+    }
+
+    if (!message.isTradeRequest) {
+      return res.status(400).json({ success: false, message: '这不是交易请求消息' })
+    }
+
+    if (message.tradeStatus !== 'pending') {
+      return res.status(400).json({ success: false, message: '交易请求状态已变更' })
+    }
+
+    // 如果有关联的商品，先检查商品是否存在且状态正确
+    if (message.tradeItemId) {
+      const item = await Item.findById(message.tradeItemId)
+      if (!item) {
+        return res.status(404).json({ success: false, message: '关联商品不存在' })
+      }
+      if (item.status !== 'available') {
+        return res.status(400).json({ success: false, message: '商品状态不是在售，无法交易' })
+      }
+    }
+
+    // 将交易请求标记为已同意
+    message.tradeStatus = 'accepted'
+    await message.save()
+
+    // 如果有关联的商品，将商品状态改为已售出
+    if (message.tradeItemId) {
+      const item = await Item.findById(message.tradeItemId)
+      if (item) {
+        item.status = 'sold'
+        await item.save()
+        console.log(`商品 ${item.title} 已标记为已售出`)
+      }
+    }
+
+    // 向发起方（原消息发送者）发送反馈消息
+    const feedbackMessage = new Message({
+      senderId: userId,
+      receiverId: message.senderId,
+      content: '',
+      isTradeRequest: true,
+      tradeItemId: message.tradeItemId,
+      tradeStatus: 'accepted',
+      tradeFeedback: true,
+      originalMessageId: messageId
+    })
+    await feedbackMessage.save()
+
+    res.json({ success: true, data: message })
+  } catch (err) {
+    console.error('同意交易请求失败:', err)
+    // 更详细的错误信息
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: '数据验证失败: ' + err.message })
+    }
+    res.status(500).json({ success: false, message: '同意交易请求失败: ' + err.message })
+  }
+})
+
+// 拒绝交易请求
+router.put('/trade-request/:messageId/reject', async (req, res) => {
+  try {
+    const userId = req.user._id
+    const messageId = req.params.messageId
+
+    const message = await Message.findById(messageId)
+    if (!message) {
+      return res.status(404).json({ success: false, message: '消息不存在' })
+    }
+
+    // 只有消息接收者才能处理交易请求
+    if (String(message.receiverId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: '只能处理发送给您的交易请求' })
+    }
+
+    if (!message.isTradeRequest) {
+      return res.status(400).json({ success: false, message: '这不是交易请求消息' })
+    }
+
+    if (message.tradeStatus !== 'pending') {
+      return res.status(400).json({ success: false, message: '交易请求状态已变更' })
+    }
+
+    message.tradeStatus = 'rejected'
+    await message.save()
+
+    // 向发起方（原消息发送者）发送反馈消息
+    const feedbackMessage = new Message({
+      senderId: userId,
+      receiverId: message.senderId,
+      content: '',
+      isTradeRequest: true,
+      tradeItemId: message.tradeItemId,
+      tradeStatus: 'rejected',
+      tradeFeedback: true,
+      originalMessageId: messageId
+    })
+    await feedbackMessage.save()
+
+    res.json({ success: true, data: message })
+  } catch (err) {
+    console.error('拒绝交易请求失败:', err)
+    res.status(500).json({ success: false, message: '拒绝交易请求失败' })
   }
 })
 

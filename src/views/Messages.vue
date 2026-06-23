@@ -59,6 +59,52 @@
           >
             <div class="message-content">
               <span v-if="message.isRevoked" class="revoked-text">[消息已撤回]</span>
+              
+              <!-- 交易请求反馈消息 -->
+              <div v-else-if="message.isTradeRequest && message.tradeFeedback" :class="['trade-feedback-card', message.tradeStatus]">
+                <div class="trade-feedback-icon">
+                  <span v-if="message.tradeStatus === 'accepted'">✓</span>
+                  <span v-else-if="message.tradeStatus === 'rejected'">✗</span>
+                </div>
+                <div class="trade-feedback-content">
+                  <p class="trade-feedback-title">{{ message.tradeStatus === 'accepted' ? '交易请求已同意' : '交易请求已拒绝' }}</p>
+                  <p class="trade-feedback-desc">{{ message.tradeStatus === 'accepted' ? '对方接受了您的交易请求' : '对方拒绝了您的交易请求' }}</p>
+                </div>
+              </div>
+              
+              <!-- 交易请求卡片 -->
+              <div v-else-if="message.isTradeRequest" class="trade-request-card">
+                <div class="trade-request-header">
+                  <span class="trade-tag">交易请求</span>
+                  <span v-if="message.tradeStatus" :class="['status-tag', message.tradeStatus]">
+                    {{ getTradeStatusText(message.tradeStatus) }}
+                  </span>
+                </div>
+                <div class="trade-request-content">
+                  <img v-if="message.image" :src="message.image" alt="商品图片" class="trade-item-image">
+                  <div class="trade-item-info">
+                    <p class="trade-message">{{ message.content }}</p>
+                    <div class="trade-actions">
+                      <button 
+                        v-if="!isSentMessage(message) && message.tradeStatus === 'pending'" 
+                        @click="acceptTradeRequest(message._id)" 
+                        class="trade-action-btn accept-btn"
+                      >
+                        ✓ 同意
+                      </button>
+                      <button 
+                        v-if="!isSentMessage(message) && message.tradeStatus === 'pending'" 
+                        @click="rejectTradeRequest(message._id)" 
+                        class="trade-action-btn reject-btn"
+                      >
+                        ✗ 拒绝
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 普通消息 -->
               <div v-else>
                 <p v-if="message.content" class="text-content">{{ message.content }}</p>
                 <img v-if="message.image" :src="message.image" alt="图片消息" class="message-image" @click="previewImage(message.image)">
@@ -111,6 +157,9 @@
             class="message-input"
           >
           <button @click="sendMessage" class="send-btn">发送</button>
+          <button @click="openTradeModal" class="trade-btn" title="发起交易">
+            🤝 发起交易
+          </button>
         </div>
         
         <!-- 图片预览 -->
@@ -134,6 +183,43 @@
         <!-- 图片查看器 -->
         <div v-if="showImageViewer" class="image-viewer" @click="closeImageViewer">
           <img :src="viewerImageUrl" alt="查看图片" @click.stop>
+        </div>
+        
+        <!-- 交易请求模态框 -->
+        <div v-if="showTradeModal" class="modal-overlay" @click="closeTradeModal">
+          <div class="modal-content trade-modal" @click.stop>
+            <div class="modal-header">
+              <h3>发起交易请求</h3>
+              <button @click="closeTradeModal" class="close-btn">×</button>
+            </div>
+            <div class="modal-body">
+              <p class="trade-info">选择您想要交易的商品：</p>
+              <div v-if="myItems.length === 0" class="empty-state">
+                <p>对方还没有发布任何商品</p>
+              </div>
+              <div v-else class="items-grid">
+                <div 
+                  v-for="item in myItems" 
+                  :key="item._id"
+                  @click="selectTradeItem(item)"
+                  :class="['item-card', { selected: selectedTradeItem?._id === item._id }]"
+                >
+                  <img :src="item.images[0] || 'https://api.dicebear.com/7.x/avataaars/svg?seed=item'" :alt="item.title" class="item-image">
+                  <div class="item-info">
+                    <h4 class="item-title">{{ item.title }}</h4>
+                    <p class="item-price">¥{{ item.price }}</p>
+                    <span :class="['status-badge', item.status]">{{ getItemStatus(item.status) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button @click="closeTradeModal" class="cancel-btn">取消</button>
+              <button @click="submitTradeRequest" :disabled="!selectedTradeItem" class="submit-btn" :class="{ disabled: !selectedTradeItem }">
+                发送交易请求
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -160,6 +246,9 @@ const previewImageUrls = ref([])
 const showImageViewer = ref(false)
 const viewerImageUrl = ref('')
 const imageInput = ref(null)
+const showTradeModal = ref(false)
+const myItems = ref([])
+const selectedTradeItem = ref(null)
 let messagePollingInterval = null
 
 const quickMessageTemplates = [
@@ -504,6 +593,155 @@ const stopMessagePolling = () => {
   if (messagePollingInterval) {
     clearInterval(messagePollingInterval)
     messagePollingInterval = null
+  }
+}
+
+const openTradeModal = async () => {
+  try {
+    // 获取对方用户（售卖方）的商品列表
+    const targetUserId = selectedConversation.value._id
+    const response = await axios.get(`/api/items/user/${targetUserId}`)
+    if (response.data) {
+      myItems.value = response.data.filter(item => item.status === 'available')
+    }
+  } catch (err) {
+    console.error('获取对方商品列表失败:', err)
+    myItems.value = []
+  }
+  selectedTradeItem.value = null
+  showTradeModal.value = true
+}
+
+const closeTradeModal = () => {
+  showTradeModal.value = false
+  selectedTradeItem.value = null
+}
+
+const selectTradeItem = (item) => {
+  selectedTradeItem.value = item
+}
+
+const getItemStatus = (status) => {
+  const statusMap = {
+    available: '在售',
+    sold: '已售出',
+    removed: '已下架'
+  }
+  return statusMap[status] || status
+}
+
+const getTradeStatusText = (status) => {
+  const statusMap = {
+    pending: '待确认',
+    accepted: '已同意',
+    rejected: '已拒绝'
+  }
+  return statusMap[status] || status
+}
+
+const acceptTradeRequest = async (messageId) => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.put(
+      `/api/messages/trade-request/${messageId}/accept`,
+      {},
+      { headers: { Authorization: 'Bearer ' + token } }
+    )
+    
+    if (response.data.success) {
+      const messageIndex = currentMessages.value.findIndex(m => m._id === messageId)
+      if (messageIndex !== -1) {
+        currentMessages.value[messageIndex].tradeStatus = 'accepted'
+      }
+      await fetchConversations()
+    }
+  } catch (err) {
+    console.error('同意交易请求失败:', err)
+    alert(err.response?.data?.message || '同意交易请求失败')
+  }
+}
+
+const rejectTradeRequest = async (messageId) => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.put(
+      `/api/messages/trade-request/${messageId}/reject`,
+      {},
+      { headers: { Authorization: 'Bearer ' + token } }
+    )
+    
+    if (response.data.success) {
+      const messageIndex = currentMessages.value.findIndex(m => m._id === messageId)
+      if (messageIndex !== -1) {
+        currentMessages.value[messageIndex].tradeStatus = 'rejected'
+      }
+      await fetchConversations()
+    }
+  } catch (err) {
+    console.error('拒绝交易请求失败:', err)
+    alert(err.response?.data?.message || '拒绝交易请求失败')
+  }
+}
+
+const submitTradeRequest = async () => {
+  if (!selectedTradeItem.value) return
+  
+  // 记录发送前的消息数量，用于判断是否发送成功
+  const beforeCount = currentMessages.value.length
+  
+  try {
+    const token = localStorage.getItem('token')
+    console.log('开始发送交易请求，目标用户:', selectedConversation.value._id)
+    console.log('商品信息:', selectedTradeItem.value.title, selectedTradeItem.value.images[0])
+    
+    const response = await axios.post(
+      '/api/messages/send/' + selectedConversation.value._id,
+      {
+        content: `您好，我想购买您发布的【${selectedTradeItem.value.title}】，价格 ¥${selectedTradeItem.value.price}`,
+        image: selectedTradeItem.value.images[0] || '',
+        isTradeRequest: true,
+        tradeItemId: selectedTradeItem.value._id
+      },
+      { headers: { Authorization: 'Bearer ' + token } }
+    )
+    
+    console.log('交易请求响应:', response.data)
+    
+    if (response.data && response.data.success) {
+      currentMessages.value.push(response.data.data)
+      closeTradeModal()
+      scrollToBottom()
+      console.log('交易请求发送成功')
+    } else if (response.data && !response.data.success) {
+      alert(response.data.message || '发送交易请求失败')
+    } else {
+      console.error('响应数据格式异常:', response)
+      // 如果消息已经发送成功（数量增加了），就不显示错误
+      if (currentMessages.value.length <= beforeCount) {
+        alert('响应数据格式异常')
+      }
+    }
+  } catch (err) {
+    console.error('发送交易请求失败 - catch:', err)
+    
+    // 检查消息是否已经发送成功（通过消息数量是否增加来判断）
+    const messageSentSuccessfully = currentMessages.value.length > beforeCount
+    
+    if (messageSentSuccessfully) {
+      // 消息已经发送成功，可能是响应延迟导致的catch触发
+      console.log('消息已成功发送，但catch被触发，可能是网络延迟')
+      closeTradeModal()
+      scrollToBottom()
+      return
+    }
+    
+    if (err.response) {
+      alert(err.response.data?.message || '发送交易请求失败')
+    } else if (err.request) {
+      alert('请求已发送，但服务器未响应')
+    } else {
+      alert('发送交易请求失败: ' + err.message)
+    }
   }
 }
 
@@ -1024,5 +1262,370 @@ onUnmounted(() => {
 
 .scroll-bottom {
   height: 1px;
+}
+
+.trade-btn {
+  padding: 12px 20px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trade-btn:hover {
+  background-color: #1976D2;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: #f5f5f5;
+  color: #666;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background-color: #eee;
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.trade-info {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: #999;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.item-card {
+  border: 2px solid #eee;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.item-card:hover {
+  border-color: #2196F3;
+}
+
+.item-card.selected {
+  border-color: #2196F3;
+  background-color: #f5f9ff;
+}
+
+.item-image {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.item-info {
+  text-align: center;
+}
+
+.item-title {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-price {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #f44336;
+  font-weight: bold;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.status-badge.available {
+  background-color: #E8F5E9;
+  color: #4CAF50;
+}
+
+.status-badge.sold {
+  background-color: #FFF3E0;
+  color: #FF9800;
+}
+
+.status-badge.removed {
+  background-color: #FCE4EC;
+  color: #E91E63;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #eee;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: white;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cancel-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.submit-btn {
+  padding: 10px 24px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.submit-btn:hover:not(.disabled) {
+  background-color: #1976D2;
+}
+
+.submit-btn.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 交易请求反馈卡片样式 */
+.trade-feedback-card {
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 220px;
+  max-width: 280px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trade-feedback-card.accepted {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+}
+
+.trade-feedback-card.rejected {
+  background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+}
+
+.trade-feedback-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.trade-feedback-content {
+  flex: 1;
+}
+
+.trade-feedback-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+}
+
+.trade-feedback-desc {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 交易请求卡片样式 */
+.trade-request-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  min-width: 280px;
+  max-width: 350px;
+}
+
+.trade-request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.trade-tag {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-tag.pending {
+  background-color: #FFC107;
+  color: #333;
+}
+
+.status-tag.accepted {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.status-tag.rejected {
+  background-color: #f44336;
+  color: white;
+}
+
+.trade-request-content {
+  display: flex;
+  gap: 12px;
+}
+
+.trade-item-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.trade-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.trade-message {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.95;
+}
+
+.trade-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.trade-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.accept-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #45a049;
+}
+
+.reject-btn {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.reject-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
 }
 </style>
