@@ -4,8 +4,6 @@ import authRoutes from './routes/auth.js'
 import itemRoutes from './routes/item.js'
 import favoriteRoutes from './routes/favorite.js'
 import statsRoutes from './routes/stats.js'
-import adminRoutes from './routes/admin.js'
-import appealRoutes from './routes/appeal.js'
 import cors from 'cors'
 import multer from 'multer'
 import path from 'path'
@@ -49,35 +47,18 @@ app.use('/api/auth', authRoutes)
 app.use('/api/items', itemRoutes)
 app.use('/api/favorites', favoriteRoutes)
 app.use('/api/stats', statsRoutes)
-app.use('/api/admin', adminRoutes)
-app.use('/api/appeals', appealRoutes)
 
 mongoose.connect('mongodb://localhost:27017/campus-market', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => {
-  console.log('数据库连接成功')
-  app.listen(PORT, () => {
-    console.log(`服务器运行在 http://localhost:${PORT}`)
-  })
-})
-.catch(err => {
-  console.error('数据库连接失败:', err)
-  process.exit(1)
-})
+.then(() => console.log('数据库连接成功'))
+.catch(err => console.error('数据库连接失败:', err))
 
 app.get('/', (req, res) => {
   res.json({ message: '校园二手物品发布平台后端服务' })
 })
 
-// 全局错误处理
-process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err)
-  process.exit(1)
-})
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('未处理的Promise拒绝:', reason)
-  process.exit(1)
+app.listen(PORT, () => {
+  console.log(`服务器运行在 http://localhost:${PORT}`)
 })
