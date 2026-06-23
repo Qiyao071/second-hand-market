@@ -1,5 +1,6 @@
 import express from 'express'
 import User from '../models/user.js'
+import Appeal from '../models/appeal.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
@@ -115,6 +116,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '邮箱或密码错误' })
     }
     
+    // 检查用户是否被封禁
+    if (user.isBanned) {
+      return res.status(403).json({ 
+        message: '您的账户已被封禁',
+        isBanned: true,
+        banReason: user.banReason,
+        banExpiry: user.banExpiry ? user.banExpiry.toISOString() : null,
+        detail: `您的账户已被封禁。\n\n封禁原因：${user.banReason || '未说明'}\n${user.banExpiry ? `解封时间：${user.banExpiry.toLocaleString()}` : '封禁类型：永久封禁'}\n\n如需解除封禁，请联系管理员进行申诉。`
+      })
+    }
+    
     // 生成token
     const token = jwt.sign({ id: user._id }, 'secret_key', { expiresIn: '7d' })
     
@@ -132,6 +144,50 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('登录失败:', err)
     res.status(500).json({ message: '登录失败，请稍后重试' })
+  }
+})
+
+// 用户申诉
+router.post('/appeal', async (req, res) => {
+  try {
+    const { email, password, reason } = req.body
+    
+    // 查找用户
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({ success: false, message: '邮箱或密码错误' })
+    }
+    
+    // 验证密码
+    const isMatch = await bcrypt.compare(password, user.password)
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: '邮箱或密码错误' })
+    }
+    
+    // 检查用户是否被封禁
+    if (!user.isBanned) {
+      return res.status(400).json({ success: false, message: '您的账号未被封禁，无需申诉' })
+    }
+    
+    // 检查是否已经有未处理的账号申诉
+    const existingAppeal = await Appeal.findOne({ user: user._id, type: 'account', status: 'pending' })
+    if (existingAppeal) {
+      return res.status(400).json({ success: false, message: '您已有待处理的申诉，请耐心等待管理员处理' })
+    }
+    
+    // 创建申诉记录
+    const appeal = new Appeal({
+      user: user._id,
+      type: 'account',
+      reason: reason,
+      status: 'pending'
+    })
+    await appeal.save()
+    
+    res.json({ success: true, message: '申诉提交成功！管理员将在24小时内处理您的申请。' })
+  } catch (err) {
+    console.error('申诉提交失败:', err)
+    res.status(500).json({ success: false, message: '申诉提交失败: ' + err.message })
   }
 })
 

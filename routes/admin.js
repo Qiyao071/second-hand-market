@@ -92,7 +92,17 @@ router.post('/users/:id/ban', isAdmin, async (req, res) => {
     user.banExpiry = banExpiry
     await user.save()
 
-    res.json({ message: '用户封禁成功' })
+    // 发送系统通知给被封禁用户
+    const Message = require('../models/message')
+    const systemNotification = new Message({
+      senderId: 'system',
+      receiverId: user._id,
+      content: `您的账户已被封禁。\n\n封禁原因：${reason || '未说明'}\n${banExpiry ? `解封时间：${banExpiry.toLocaleString()}` : '封禁类型：永久封禁'}\n\n如需解除封禁，请联系管理员进行申诉。`,
+      isSystem: true
+    })
+    await systemNotification.save()
+
+    res.json({ message: '用户封禁成功，已发送系统通知' })
   } catch (err) {
     console.error('封禁用户失败:', err)
     res.status(500).json({ message: '封禁用户失败' })
