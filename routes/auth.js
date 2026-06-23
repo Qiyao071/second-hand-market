@@ -180,6 +180,22 @@ router.put('/profile', async (req, res) => {
   }
 })
 
+// 获取指定用户信息（公开）
+router.get('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password')
+    
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' })
+    }
+    
+    res.json(user)
+  } catch (err) {
+    console.error('获取用户信息失败:', err)
+    res.status(500).json({ message: '获取用户信息失败' })
+  }
+})
+
 // 上传头像
 router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
   try {

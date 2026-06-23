@@ -39,9 +39,20 @@
             <span class="label">发布时间：</span>
             <span class="value">{{ formatDate(item.createdAt) }}</span>
           </div>
-          <div class="info-row">
+          <div class="info-row seller-info">
             <span class="label">卖家：</span>
-            <span class="value">{{ item.seller?.name || '未知' }}</span>
+            <div class="seller-profile" @click="goToSellerProfile(item.seller?._id)">
+              <img 
+                v-if="item.seller?.avatar" 
+                :src="item.seller.avatar" 
+                :alt="item.seller.name"
+                class="seller-avatar"
+              />
+              <div v-else class="seller-avatar placeholder">
+                {{ item.seller?.name?.charAt(0) || '?' }}
+              </div>
+              <span class="seller-name">{{ item.seller?.name || '未知' }}</span>
+            </div>
           </div>
         </div>
 
@@ -109,6 +120,12 @@ const fetchItemDetail = async () => {
 
 const goBack = () => {
   router.push('/items')
+}
+
+const goToSellerProfile = (sellerId) => {
+  if (sellerId) {
+    router.push(`/profile/${sellerId}`)
+  }
 }
 
 const handleEdit = () => {
@@ -323,6 +340,47 @@ onMounted(async () => {
   word-break: break-word;
   white-space: normal;
   flex: 1;
+}
+
+.seller-info {
+  align-items: center;
+}
+
+.seller-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  transition: background-color 0.3s;
+}
+
+.seller-profile:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.seller-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ddd;
+}
+
+.seller-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.seller-name {
+  color: #4CAF50;
+  font-weight: 500;
 }
 
 .description,

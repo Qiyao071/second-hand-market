@@ -243,4 +243,17 @@ router.get('/user/my-items', async (req, res) => {
   }
 })
 
+// 获取指定用户发布的物品（公开接口）
+router.get('/user/:id', async (req, res) => {
+  try {
+    const items = await Item.find({ seller: req.params.id })
+      .populate('seller', 'name')
+      .sort({ createdAt: -1 })
+    res.json(items)
+  } catch (err) {
+    console.error('获取用户物品失败:', err)
+    res.status(500).json({ message: '获取用户物品失败' })
+  }
+})
+
 export default router

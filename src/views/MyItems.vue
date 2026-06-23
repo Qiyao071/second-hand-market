@@ -1,12 +1,12 @@
 <template>
   <div class="container">
-    <h2>我的发布</h2>
+    <h2>{{ isOwnProfile ? '我的发布' : `${sellerName || '卖家'}的发布` }}</h2>
     
     <div v-if="loading" class="loading">加载中...</div>
     
     <div v-else-if="items.length === 0" class="empty">
       <p>暂无发布的物品</p>
-      <button @click="goToPublish" class="publish-btn">去发布</button>
+      <button v-if="isOwnProfile" @click="goToPublish" class="publish-btn">去发布</button>
     </div>
     
     <div v-else class="items-grid">
@@ -25,7 +25,7 @@
           <p class="category">{{ item.category }}</p>
           <p class="status" :class="item.status">{{ item.status === 'available' ? '在售' : '已售出' }}</p>
         </div>
-        <div class="item-actions">
+        <div v-if="isOwnProfile" class="item-actions">
           <button @click.stop="toggleStatus(item._id, item.status)" class="status-btn" :class="item.status">
             {{ item.status === 'available' ? '设为已售出' : '设为在售' }}
           </button>
@@ -33,7 +33,7 @@
           <button @click.stop="deleteItem(item._id)" class="delete-btn">删除</button>
         </div>
       </div>
-      <div class="item-card publish-card" @click="goToPublish">
+      <div v-if="isOwnProfile" class="item-card publish-card" @click="goToPublish">
         <div class="publish-content">
           <span class="plus-icon">+</span>
           <span class="publish-text">发布新物品</span>
@@ -44,26 +44,47 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const items = ref([])
 const loading = ref(true)
+const sellerName = ref('')
+
+const isOwnProfile = computed(() => {
+  const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const targetUserId = route.params.id || loggedInUser.id
+  return targetUserId === loggedInUser.id
+})
 
 const fetchMyItems = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/items/user/my-items', {
-      headers: {
-        Authorization: `Bearer ${token}`
+    const targetUserId = route.params.id
+    const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}')
+    
+    if (targetUserId && targetUserId !== loggedInUser.id) {
+      // 查看其他用户的发布
+      const response = await axios.get(`/api/items/user/${targetUserId}`)
+      items.value = response.data
+      if (response.data.length > 0 && response.data[0].seller) {
+        sellerName.value = response.data[0].seller.name
       }
-    })
-    items.value = response.data
+    } else {
+      // 查看自己的发布
+      const token = localStorage.getItem('token')
+      const response = await axios.get('/api/items/user/my-items', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      items.value = response.data
+    }
   } catch (err) {
-    console.error('获取我的物品失败:', err)
+    console.error('获取物品失败:', err)
     items.value = []
   } finally {
     loading.value = false
