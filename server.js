@@ -21,6 +21,7 @@ const __dirname = path.dirname(__filename)
 
 const uploadDir = path.join(__dirname, 'uploads')
 const itemsUploadDir = path.join(__dirname, 'uploads/items')
+const messagesUploadDir = path.join(__dirname, 'uploads/messages')
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true })
@@ -28,6 +29,10 @@ if (!fs.existsSync(uploadDir)) {
 
 if (!fs.existsSync(itemsUploadDir)) {
   fs.mkdirSync(itemsUploadDir, { recursive: true })
+}
+
+if (!fs.existsSync(messagesUploadDir)) {
+  fs.mkdirSync(messagesUploadDir, { recursive: true })
 }
 
 const storage = multer.diskStorage({
