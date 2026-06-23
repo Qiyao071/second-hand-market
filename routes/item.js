@@ -1,11 +1,13 @@
 import express from 'express'
 import Item from '../models/item.js'
 import Favorite from '../models/favorite.js'
+import User from '../models/user.js'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import { checkBanStatus } from '../middleware/admin.js'
 
 const router = express.Router()
 
@@ -29,7 +31,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage })
 
-router.post('/', upload.array('images', 9), async (req, res) => {
+router.post('/', upload.array('images', 9), checkBanStatus, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1]
     if (!token) {

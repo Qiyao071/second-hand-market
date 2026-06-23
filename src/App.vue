@@ -11,6 +11,8 @@
         <router-link v-if="!isLoggedIn" to="/register">注册</router-link>
         <router-link v-if="isLoggedIn" to="/my-items">我的发布</router-link>
         <router-link v-if="isLoggedIn" to="/favorites">我的收藏</router-link>
+        <router-link v-if="isLoggedIn && isBanned" to="/appeal">申诉</router-link>
+        <router-link v-if="isLoggedIn && isAdmin" to="/admin">管理后台</router-link>
         <router-link v-if="isLoggedIn" to="/profile">个人中心</router-link>
         <button v-if="isLoggedIn" @click="logout">退出登录</button>
       </nav>
@@ -28,16 +30,29 @@ import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
 const isLoggedIn = ref(false)
+const isAdmin = ref(false)
+const isBanned = ref(false)
 
 const checkLoginStatus = () => {
   const token = localStorage.getItem('token')
   isLoggedIn.value = !!token
+  
+  if (token) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    isAdmin.value = user.role === 'admin'
+    isBanned.value = user.isBanned
+  } else {
+    isAdmin.value = false
+    isBanned.value = false
+  }
 }
 
 const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   isLoggedIn.value = false
+  isAdmin.value = false
+  isBanned.value = false
   router.push('/login')
 }
 
